@@ -236,13 +236,13 @@ function displayQuestion() {
     document.getElementById('total-questions').textContent = total;
     
     container.innerHTML = `
-        <div class="bg-white rounded-lg shadow-lg p-6 fade-in">
-            <p class="text-lg text-gray-800 mb-6">${question.question}</p>
+        <div class="bg-white rounded-card material-shadow-lg p-8 fade-in max-w-xl mx-auto">
+            <p class="text-lg text-gray-800 mb-8 text-center font-medium">${question.question}</p>
             <div class="flex gap-4">
-                <button onclick="answerQuestion(true)" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition">
+                <button onclick="answerQuestion(true)" class="flex-1 bg-gentle-green hover:bg-opacity-90 text-white font-semibold py-4 px-6 rounded-card transition btn-scale" aria-label="Answer yes">
                     Yes
                 </button>
-                <button onclick="answerQuestion(false)" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition">
+                <button onclick="answerQuestion(false)" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-4 px-6 rounded-card transition btn-scale" aria-label="Answer no">
                     No
                 </button>
             </div>
@@ -297,33 +297,36 @@ function showResults() {
     const scoreDisplay = document.getElementById('risk-score-display');
     const guidance = document.getElementById('risk-guidance');
     
-    let riskLevel, color, message;
+    let riskLevel, emoji, color, message;
     
     if (AppState.riskScore < 0.3) {
         riskLevel = 'Low Risk';
-        color = 'text-green-600';
-        message = 'Your assessment indicates a lower risk level. However, if you ever feel unsafe, please reach out to the resources available.';
+        emoji = '🟢';
+        color = 'text-gentle-green';
+        message = 'You\'re taking the right steps. Here\'s how to stay safe: Continue building your support network and keep safety resources accessible.';
     } else if (AppState.riskScore < 0.6) {
         riskLevel = 'Moderate Risk';
-        color = 'text-yellow-600';
-        message = 'Your assessment indicates moderate risk. We recommend creating a safety plan and reviewing available resources. Consider reaching out to a domestic violence advocate.';
+        emoji = '🟡';
+        color = 'text-yellow-500';
+        message = 'You\'re taking the right steps. Here\'s how to stay safe: We recommend creating a safety plan and reviewing available resources. Consider reaching out to a domestic violence advocate.';
     } else {
         riskLevel = 'High Risk';
-        color = 'text-red-600';
-        message = 'Your assessment indicates high risk. Your safety is our priority. Please consider contacting the National Domestic Violence Hotline (1-800-799-7233) and review the resources and safety plan features.';
+        emoji = '🔴';
+        color = 'text-alert-red';
+        message = 'You\'re taking the right steps. Here\'s how to stay safe: Your safety is our priority. Please consider contacting the National Domestic Violence Hotline (1-800-799-7233) and review the resources and safety plan features.';
     }
     
     scoreDisplay.innerHTML = `
-        <div class="text-center">
-            <div class="${color} text-4xl font-bold mb-2">${riskLevel}</div>
-            <div class="text-gray-600">Risk Score: ${(AppState.riskScore * 100).toFixed(0)}%</div>
+        <div class="text-center py-6">
+            <div class="text-6xl mb-3">${emoji}</div>
+            <div class="${color} text-3xl font-bold mb-2">${riskLevel}</div>
         </div>
     `;
     
     guidance.innerHTML = `
-        <p class="mb-4">${message}</p>
-        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p class="text-sm text-yellow-800">
+        <p class="mb-6 text-gray-700 leading-relaxed">${message}</p>
+        <div class="bg-hopeful-teal bg-opacity-10 border border-hopeful-teal border-opacity-30 rounded-card p-4">
+            <p class="text-sm text-gray-700">
                 <strong>Remember:</strong> This assessment is a tool, not a diagnosis. Trust your instincts. If you feel unsafe, seek help immediately.
             </p>
         </div>
@@ -361,58 +364,93 @@ function displaySafetyPlan() {
     
     if (plan.urgentActions) {
         html += `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h3 class="font-bold text-red-800 mb-2">⚠️ Urgent Actions</h3>
-                <ul class="list-disc list-inside space-y-1 text-sm text-red-700">
-                    ${plan.urgentActions.map(action => `<li>${action}</li>`).join('')}
+            <div class="bg-alert-red bg-opacity-10 border border-alert-red border-opacity-30 rounded-card p-5">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span class="text-xl">⚠️</span>
+                    <span>Urgent Actions</span>
+                </h3>
+                <ul class="space-y-2">
+                    ${plan.urgentActions.map(action => `
+                        <li class="flex items-start gap-3">
+                            <input type="checkbox" class="mt-1 rounded border-gray-300 text-trust-blue focus:ring-trust-blue" aria-label="Mark action as complete">
+                            <span class="text-sm text-gray-700">${action}</span>
+                        </li>
+                    `).join('')}
                 </ul>
             </div>
         `;
     }
     
     html += `
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="font-bold text-gray-800 mb-3">📞 Emergency Contacts</h3>
-            <div class="space-y-2">
-                <div class="flex items-center gap-2">
-                    <span class="font-semibold">National DV Hotline:</span>
-                    <a href="tel:18007997233" class="text-blue-600">1-800-799-7233</a>
+        <div class="bg-white rounded-card material-shadow-lg p-5">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="text-xl">📞</span>
+                <span>Emergency Contacts</span>
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 bg-neutral-bg rounded-lg">
+                    <span class="font-medium text-gray-700 text-sm">National DV Hotline:</span>
+                    <a href="tel:18007997233" class="text-trust-blue font-semibold flex items-center gap-2 hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        1-800-799-7233
+                    </a>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="font-semibold">Emergency:</span>
-                    <a href="tel:911" class="text-red-600">911</a>
+                <div class="flex items-center justify-between p-3 bg-neutral-bg rounded-lg">
+                    <span class="font-medium text-gray-700 text-sm">Emergency:</span>
+                    <a href="tel:911" class="text-alert-red font-semibold flex items-center gap-2 hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        911
+                    </a>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="font-bold text-gray-800 mb-3">📋 Important Documents</h3>
-            <ul class="space-y-1 text-sm">
+        <div class="bg-white rounded-card material-shadow-lg p-5">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="text-xl">📋</span>
+                <span>Important Documents</span>
+            </h3>
+            <div class="space-y-2">
                 ${plan.importantDocuments.map(doc => `
-                    <li class="flex items-center gap-2">
-                        <input type="checkbox" class="rounded">
-                        <span>${doc}</span>
-                    </li>
+                    <label class="flex items-center gap-3 p-2 hover:bg-neutral-bg rounded-lg cursor-pointer transition">
+                        <input type="checkbox" class="rounded border-gray-300 text-gentle-green focus:ring-gentle-green checkmark-animate" aria-label="Mark ${doc} as ready">
+                        <span class="text-sm text-gray-700">${doc}</span>
+                    </label>
                 `).join('')}
-            </ul>
+            </div>
         </div>
         
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="font-bold text-gray-800 mb-3">🎒 Essential Items</h3>
-            <ul class="space-y-1 text-sm">
+        <div class="bg-white rounded-card material-shadow-lg p-5">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="text-xl">🎒</span>
+                <span>Essential Items</span>
+            </h3>
+            <div class="space-y-2">
                 ${plan.essentialItems.map(item => `
-                    <li class="flex items-center gap-2">
-                        <input type="checkbox" class="rounded">
-                        <span>${item}</span>
-                    </li>
+                    <label class="flex items-center gap-3 p-2 hover:bg-neutral-bg rounded-lg cursor-pointer transition">
+                        <input type="checkbox" class="rounded border-gray-300 text-gentle-green focus:ring-gentle-green checkmark-animate" aria-label="Mark ${item} as packed">
+                        <span class="text-sm text-gray-700">${item}</span>
+                    </label>
                 `).join('')}
-            </ul>
+            </div>
         </div>
         
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="font-bold text-gray-800 mb-3">✅ Safety Steps</h3>
-            <ol class="list-decimal list-inside space-y-2 text-sm">
-                ${plan.safetySteps.map(step => `<li>${step}</li>`).join('')}
+        <div class="bg-white rounded-card material-shadow-lg p-5">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="text-xl">✅</span>
+                <span>Safety Steps</span>
+            </h3>
+            <ol class="space-y-3">
+                ${plan.safetySteps.map((step, idx) => `
+                    <li class="flex gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 bg-trust-blue text-white rounded-full flex items-center justify-center text-xs font-bold">${idx + 1}</span>
+                        <span class="text-sm text-gray-700 pt-0.5">${step}</span>
+                    </li>
+                `).join('')}
             </ol>
         </div>
     `;
@@ -439,23 +477,77 @@ function displayResources(category = 'all') {
     const container = document.getElementById('resource-list');
     const filtered = category === 'all' ? resources : resources.filter(r => r.category === category);
     
+    const categoryIcons = {
+        'hotline': '☎️',
+        'shelter': '🏠',
+        'legal': '⚖️',
+        'counseling': '💬'
+    };
+    
     container.innerHTML = filtered.map(resource => `
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="font-bold text-gray-800 mb-2">${resource.name}</h3>
-            <p class="text-sm text-gray-600 mb-2">${resource.description}</p>
-            <div class="space-y-1 text-sm">
+        <div class="bg-white rounded-card material-shadow-lg p-5">
+            <div class="flex items-start gap-3 mb-3">
+                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-trust-blue bg-opacity-10 flex-shrink-0">
+                    <span class="text-xl">${categoryIcons[resource.category] || '📌'}</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-gray-800 text-base mb-1">${resource.name}</h3>
+                    <p class="text-sm text-gray-600">${resource.description}</p>
+                </div>
+            </div>
+            <div class="space-y-2 mb-4">
                 ${resource.phone ? `
-                    <div class="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
-                        <a href="tel:${resource.phone.replace(/[^0-9]/g, '')}" class="text-blue-600">${resource.phone}</a>
+                        <span class="text-gray-700">${resource.phone}</span>
                     </div>
                 ` : ''}
-                ${resource.hours ? `<div class="text-gray-600">⏰ ${resource.hours}</div>` : ''}
-                ${resource.available ? `<div class="text-green-600">✓ ${resource.available}</div>` : ''}
-                ${resource.address ? `<div class="text-gray-600">📍 ${resource.address}</div>` : ''}
+                ${resource.hours ? `
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-gray-600">${resource.hours}</span>
+                    </div>
+                ` : ''}
+                ${resource.available ? `
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg class="h-4 w-4 text-gentle-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-gentle-green font-medium">${resource.available}</span>
+                    </div>
+                ` : ''}
+                ${resource.address ? `
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span class="text-gray-600">${resource.address}</span>
+                    </div>
+                ` : ''}
             </div>
+            ${resource.phone ? `
+                <div class="flex gap-2">
+                    <a href="tel:${resource.phone.replace(/[^0-9]/g, '')}" class="flex-1 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-2.5 px-4 rounded-lg text-center transition btn-scale flex items-center justify-center gap-2" aria-label="Call ${resource.name}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Call
+                    </a>
+                    ${resource.address && resource.address !== 'Confidential location' ? `
+                        <button class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-4 rounded-lg transition btn-scale flex items-center justify-center gap-2" aria-label="Get directions to ${resource.name}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            Directions
+                        </button>
+                    ` : ''}
+                </div>
+            ` : ''}
         </div>
     `).join('');
 }
@@ -609,6 +701,10 @@ function init() {
         showScreen('safety-plan');
         displaySafetyPlan();
     });
+    document.getElementById('view-resources-from-results').addEventListener('click', () => {
+        showScreen('resources');
+        displayResources();
+    });
     document.getElementById('restart-assessment').addEventListener('click', startAssessment);
     
     // Event Listeners - Safety Plan Screen
@@ -622,11 +718,11 @@ function init() {
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.remove('active', 'bg-teal-600', 'text-white');
-                b.classList.add('bg-gray-200', 'text-gray-700');
+                b.classList.remove('active', 'bg-trust-blue', 'text-white');
+                b.classList.add('bg-white', 'text-gray-700');
             });
-            e.target.classList.add('active', 'bg-teal-600', 'text-white');
-            e.target.classList.remove('bg-gray-200', 'text-gray-700');
+            e.target.classList.add('active', 'bg-trust-blue', 'text-white');
+            e.target.classList.remove('bg-white', 'text-gray-700');
             
             const category = e.target.dataset.category;
             displayResources(category);
