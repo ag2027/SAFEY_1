@@ -348,9 +348,13 @@ Notes:
                 if (value === '=') {
                     // Check if PIN was entered
                     if (pinAttempt.length === 4) {
-                        const isValid = await unlockHandler.attemptUnlock(pinAttempt);
-                        if (!isValid) {
-                            pinAttempt = '';
+                        if (typeof unlockHandler !== 'undefined') {
+                            const isValid = await unlockHandler.attemptUnlock(pinAttempt);
+                            if (!isValid) {
+                                pinAttempt = '';
+                            }
+                        } else {
+                            console.error('[SAFEY] unlockHandler not available');
                         }
                         return;
                     }
@@ -409,7 +413,7 @@ Notes:
         menu.addEventListener('click', async () => {
             if (confirm('Return to app? (Enter PIN)')) {
                 const pin = prompt('Enter PIN:');
-                if (pin) {
+                if (pin && typeof unlockHandler !== 'undefined') {
                     await unlockHandler.attemptUnlock(pin);
                 }
             }
@@ -431,7 +435,7 @@ Notes:
             
             if (tapCount === 2) {
                 const pin = prompt('Enter PIN to unlock:');
-                if (pin) {
+                if (pin && typeof unlockHandler !== 'undefined') {
                     await unlockHandler.attemptUnlock(pin);
                 }
                 tapCount = 0;
@@ -452,7 +456,7 @@ Notes:
         header.addEventListener('mousedown', () => {
             pressTimer = setTimeout(async () => {
                 const pin = prompt('Enter PIN to unlock:');
-                if (pin) {
+                if (pin && typeof unlockHandler !== 'undefined') {
                     await unlockHandler.attemptUnlock(pin);
                 }
             }, 2000);
@@ -465,7 +469,7 @@ Notes:
         header.addEventListener('touchstart', () => {
             pressTimer = setTimeout(async () => {
                 const pin = prompt('Enter PIN to unlock:');
-                if (pin) {
+                if (pin && typeof unlockHandler !== 'undefined') {
                     await unlockHandler.attemptUnlock(pin);
                 }
             }, 2000);
@@ -482,7 +486,7 @@ Notes:
         
         menu.addEventListener('click', async () => {
             const pin = prompt('Enter PIN to unlock:');
-            if (pin) {
+            if (pin && typeof unlockHandler !== 'undefined') {
                 await unlockHandler.attemptUnlock(pin);
             }
         });
@@ -493,7 +497,7 @@ Notes:
         // Click to unlock
         this.container.addEventListener('click', async () => {
             const pin = prompt('Enter PIN to unlock:');
-            if (pin) {
+            if (pin && typeof unlockHandler !== 'undefined') {
                 await unlockHandler.attemptUnlock(pin);
             }
         });
