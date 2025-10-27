@@ -348,7 +348,7 @@ Notes:
                 if (value === '=') {
                     // Check if PIN was entered
                     if (pinAttempt.length === 4) {
-                        const isValid = await window.unlockHandler?.attemptUnlock(pinAttempt);
+                        const isValid = await unlockHandler.attemptUnlock(pinAttempt);
                         if (!isValid) {
                             pinAttempt = '';
                         }
@@ -410,7 +410,7 @@ Notes:
             if (confirm('Return to app? (Enter PIN)')) {
                 const pin = prompt('Enter PIN:');
                 if (pin) {
-                    await window.unlockHandler?.attemptUnlock(pin);
+                    await unlockHandler.attemptUnlock(pin);
                 }
             }
         });
@@ -432,7 +432,7 @@ Notes:
             if (tapCount === 2) {
                 const pin = prompt('Enter PIN to unlock:');
                 if (pin) {
-                    await window.unlockHandler?.attemptUnlock(pin);
+                    await unlockHandler.attemptUnlock(pin);
                 }
                 tapCount = 0;
             } else {
@@ -453,7 +453,7 @@ Notes:
             pressTimer = setTimeout(async () => {
                 const pin = prompt('Enter PIN to unlock:');
                 if (pin) {
-                    await window.unlockHandler?.attemptUnlock(pin);
+                    await unlockHandler.attemptUnlock(pin);
                 }
             }, 2000);
         });
@@ -466,7 +466,7 @@ Notes:
             pressTimer = setTimeout(async () => {
                 const pin = prompt('Enter PIN to unlock:');
                 if (pin) {
-                    await window.unlockHandler?.attemptUnlock(pin);
+                    await unlockHandler.attemptUnlock(pin);
                 }
             }, 2000);
         });
@@ -483,7 +483,7 @@ Notes:
         menu.addEventListener('click', async () => {
             const pin = prompt('Enter PIN to unlock:');
             if (pin) {
-                await window.unlockHandler?.attemptUnlock(pin);
+                await unlockHandler.attemptUnlock(pin);
             }
         });
     }
@@ -494,7 +494,7 @@ Notes:
         this.container.addEventListener('click', async () => {
             const pin = prompt('Enter PIN to unlock:');
             if (pin) {
-                await window.unlockHandler?.attemptUnlock(pin);
+                await unlockHandler.attemptUnlock(pin);
             }
         });
     }
