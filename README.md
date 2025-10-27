@@ -7,10 +7,24 @@ A discreet Progressive Web App (PWA) for domestic violence safety and resources.
 ✅ **Anonymous Risk Assessment** - 8-question questionnaire with risk scoring  
 ✅ **Safety Plan Generator** - Personalized safety plans saved locally  
 ✅ **Resource Directory** - Searchable database of shelters, hotlines, legal aid, and counseling  
-✅ **Stealth/Panic Mode** - Disguise app as calculator with PIN unlock  
-✅ **Behavioral Check-in System** - Pattern detection for safety alerts  
+✅ **Comprehensive Stealth Mode** - Multiple disguise templates (Calculator, Notes, Weather) with invisible PIN unlock  
+✅ **Advanced Trigger System** - Logo double-tap, corner multi-tap, and manual activation  
+✅ **Auto-Lock Feature** - Automatic stealth activation after inactivity  
+✅ **Behavioral Check-in System** - Pattern detection for safety alerts with user consent  
+✅ **Event Logging** - Encrypted local event tracking for behavioral heuristics  
 ✅ **Offline-First PWA** - Works without internet connection  
 ✅ **Privacy-First** - All data stays on your device
+
+### Stealth Mode Highlights
+
+- **3 Built-in Disguise Templates**: Calculator (working), Notes (editable), Weather (realistic)
+- **Invisible Unlock Methods**: Each disguise has a unique, hidden unlock mechanism
+- **Configurable Triggers**: Logo double-tap, corner taps (default: 4 in top-right)
+- **Auto-Lock**: Configurable timeout (2-15 minutes) for automatic stealth activation
+- **Behavioral Heuristics**: Detects suspicious patterns and prompts optional safety checks
+- **Full Settings Control**: Configure PIN, template, triggers, and timeout in Settings
+
+📖 **[Read Full Stealth Mode Documentation](STEALTH_MODE_README.md)**
 
 ## Installation
 
@@ -75,10 +89,28 @@ Once accessed via HTTPS:
 - Works offline with cached data
 
 ### Stealth Mode
-- Tap eye icon in header to activate
-- App transforms into calculator
-- Unlock with PIN (default: 1234)
-- Change PIN in Settings
+
+**Quick Activation:**
+- Double-tap SAFEY logo (top-left)
+- Tap top-right corner 4 times quickly
+- Tap eye icon in header
+
+**Disguise Templates:**
+- **Calculator** (default): Working calculator - unlock by typing PIN + `=`
+- **Notes**: Editable notes - unlock by swiping down 3 times (with PIN in text)
+- **Weather**: Weather app - unlock by tapping temperature 5 times
+
+**Configuration:**
+- Set 4-digit PIN in Settings (default: 1234)
+- Choose disguise template
+- Configure auto-lock timeout (2-15 minutes)
+- Enable/disable triggers
+
+**Auto-Lock:**
+- Automatically activates stealth mode after inactivity
+- Default: 5 minutes (configurable)
+
+📖 See [STEALTH_MODE_README.md](STEALTH_MODE_README.md) for complete documentation
 
 ### Emergency Mode
 - Quick access to emergency hotlines
@@ -86,9 +118,18 @@ Once accessed via HTTPS:
 - No data sent externally
 
 ### Settings
-- Set custom 4-digit PIN for stealth mode
+
+**General:**
 - Clear all local data
 - Accessible via gear icon
+
+**Stealth Mode Configuration:**
+- Set custom 4-digit PIN for stealth unlock
+- Choose disguise template (Calculator, Notes, Weather)
+- Configure auto-lock timeout (2-15 minutes)
+- Enable/disable logo double-tap trigger
+- Enable/disable corner multi-tap trigger
+- Clear stealth session and event logs
 
 ## Privacy & Security
 
@@ -122,29 +163,81 @@ Once accessed via HTTPS:
 ### File Structure
 ```
 SAFEY_1/
-├── index.html          # Main app HTML
-├── app.js              # Application logic
-├── manifest.json       # PWA manifest
-├── service-worker.js   # Offline caching
-├── README.md           # Documentation
-└── LICENSE             # License file
+├── index.html              # Main app HTML
+├── app.js                  # Core application logic
+├── stealth-mode.js         # Comprehensive stealth mode implementation
+├── manifest.json           # PWA manifest
+├── service-worker.js       # Offline caching
+├── README.md               # Main documentation
+├── STEALTH_MODE_README.md  # Stealth mode detailed docs
+├── LICENSE                 # License file
+└── stealth/                # Modular stealth components (ES6)
+    ├── stealthModeController.js
+    ├── disguiseRenderer.js
+    ├── stealthSettings.js
+    ├── stealthTriggerHandler.js
+    ├── unlockHandler.js
+    ├── behavioralHeuristics.js
+    ├── utils/
+    │   ├── encryption.js
+    │   ├── storage.js
+    │   └── eventLogger.js
+    └── templates/
+        ├── calculator.js
+        ├── notes.js
+        ├── weather.js
+        ├── news.js
+        ├── gallery.js
+        └── customUrl.js
 ```
 
 ### Performance
-- App size: ~40KB total (uncompressed)
+- App size: ~60KB total (with stealth mode, uncompressed)
 - Loads in <1 second on 3G
 - Works on low-end mobile devices
 - No external dependencies except Tailwind CDN
+- Stealth mode: 150-200ms transition animations
 
 ## Behavioral Check-in System
 
-The app tracks certain events locally to detect concerning patterns:
+The app tracks certain events locally to detect concerning patterns and protect user safety:
 
-- **Tracked Events**: emergency mode activations, stealth mode toggles, failed unlock attempts
-- **Pattern Detection**: Multiple emergency activations within 1 hour triggers safety check prompt
+### Tracked Events
+- `stealthActivated` - Stealth mode activated
+- `unlockAttempt`, `unlockSuccess`, `unlockFail` - Unlock attempts
+- `emergencyToggled` - Emergency mode activations
+- `suspiciousDetected` - Pattern detection triggers
+- `safetyCheckSent` - Safety check actions
+
+### Pattern Detection Heuristics
+
+1. **Emergency Toggle Pattern**
+   - Triggers if emergency mode activated >2 times within 15 minutes
+   - Suggests potential distress situation
+
+2. **Failed Unlock Pattern**
+   - Triggers if ≥3 failed unlock attempts within 10 minutes
+   - May indicate unauthorized access attempts
+
+3. **Emergency Inactivity Pattern**
+   - Triggers if emergency mode entered with no activity for 30 minutes
+   - May indicate user unable to continue
+
+### Safety Check Prompt
+
+When a suspicious pattern is detected:
+- Shows user-friendly modal: "We detected something that might be unsafe"
+- Asks: "Would you like to send a safety check to a trusted contact?"
+- User must explicitly choose "Send" or "Cancel"
+- **No automatic actions** - user consent always required
+- Demo mode: logs payload to console (no real transmission)
+
+### Privacy Guarantees
 - **User Consent**: Always asks permission before any action
 - **No Recording**: Does not record audio, video, or keystrokes
-- **Privacy**: Events stored locally, never transmitted
+- **Local Only**: Events stored locally, never transmitted automatically
+- **Debug Mode**: Event logs can be viewed in console for transparency
+- **Clear Session**: User can wipe all event logs at any time
 
 ## Development
 
