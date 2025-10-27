@@ -6,6 +6,7 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/app.js',
+  '/stealth-mode.js',
   '/manifest.json',
   'https://cdn.tailwindcss.com'
 ];

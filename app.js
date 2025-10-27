@@ -743,10 +743,66 @@ function init() {
     document.getElementById('pin-input').addEventListener('change', updatePin);
     document.getElementById('clear-data').addEventListener('click', clearAllData);
     
+    // Event Listeners - Stealth Settings
+    if (document.getElementById('save-stealth-settings')) {
+        document.getElementById('save-stealth-settings').addEventListener('click', saveStealthSettings);
+        // Load current stealth settings
+        loadStealthSettings();
+    }
+    
     // Track app start
     trackEvent('app_start');
     
     console.log('SAFEY initialized - All data stays on your device');
+}
+
+// Stealth Settings Functions
+function loadStealthSettings() {
+    if (!window.StealthMode) return;
+    
+    const settings = window.StealthMode.getDebugInfo().settings;
+    
+    const pinInput = document.getElementById('stealth-pin-input');
+    const templateSelect = document.getElementById('stealth-template-select');
+    const autolockSelect = document.getElementById('stealth-autolock-select');
+    const logoTrigger = document.getElementById('stealth-logo-trigger');
+    const cornerTrigger = document.getElementById('stealth-corner-trigger');
+    
+    if (pinInput) pinInput.value = settings.pin || '1234';
+    if (templateSelect) templateSelect.value = settings.template || 'calculator';
+    if (autolockSelect) autolockSelect.value = settings.autoLockMinutes || '5';
+    if (logoTrigger) logoTrigger.checked = settings.triggers?.logoDoubleTap !== false;
+    if (cornerTrigger) cornerTrigger.checked = true; // Always enabled in current implementation
+}
+
+function saveStealthSettings() {
+    if (!window.StealthMode) return;
+    
+    const pin = document.getElementById('stealth-pin-input').value;
+    const template = document.getElementById('stealth-template-select').value;
+    const autolock = parseInt(document.getElementById('stealth-autolock-select').value);
+    const logoTrigger = document.getElementById('stealth-logo-trigger').checked;
+    const cornerTrigger = document.getElementById('stealth-corner-trigger').checked;
+    
+    // Validate PIN
+    if (!/^\d{4}$/.test(pin)) {
+        alert('PIN must be exactly 4 digits');
+        return;
+    }
+    
+    // Save to localStorage (StealthMode uses this internally)
+    localStorage.setItem('safey_stealth_pin', pin);
+    localStorage.setItem('safey_stealth_settings', JSON.stringify({
+        template: template,
+        autoLockMinutes: autolock,
+        triggers: {
+            logoDoubleTap: logoTrigger,
+            cornerTaps: 4
+        }
+    }));
+    
+    alert('Stealth settings saved! Changes will take effect on next activation.');
+    console.log('[Settings] Stealth mode settings updated');
 }
 
 // Register Service Worker for PWA
