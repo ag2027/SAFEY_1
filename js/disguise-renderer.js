@@ -87,6 +87,10 @@ class DisguiseRenderer {
     // Notes template (editable text area)
     renderNotes(container) {
         container.className = 'max-w-2xl mx-auto p-4 h-screen bg-white';
+        
+        // Create textarea separately to avoid XSS
+        const notesContent = this.getNotesContent();
+        
         container.innerHTML = `
             <div class="h-full flex flex-col">
                 <div class="bg-yellow-50 border-b border-yellow-200 p-3 flex items-center justify-between">
@@ -102,9 +106,15 @@ class DisguiseRenderer {
                     class="flex-1 p-4 text-gray-800 resize-none focus:outline-none font-sans"
                     placeholder="Start typing..."
                     style="font-family: system-ui, -apple-system, sans-serif;"
-                >${this.getNotesContent()}</textarea>
+                ></textarea>
             </div>
         `;
+        
+        // Set value via textContent to prevent XSS
+        const textarea = container.querySelector('#notes-content');
+        if (textarea) {
+            textarea.value = notesContent;
+        }
         
         this.attachNotesListeners();
     }
