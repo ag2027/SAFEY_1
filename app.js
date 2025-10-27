@@ -552,70 +552,14 @@ function displayResources(category = 'all') {
     `).join('');
 }
 
-// Stealth Mode Functions
-function activateStealthMode() {
-    AppState.stealthMode = true;
-    showScreen('stealth');
-    document.title = 'Calculator';
-    trackEvent('stealth_mode_activated');
-}
+// Old Stealth Mode Functions (now handled by stealth-controller.js)
+// Keeping for backward compatibility but these are no longer used
 
-function deactivateStealthMode() {
-    const enteredPin = prompt('Enter PIN to unlock:');
-    if (enteredPin === AppState.pin) {
-        AppState.stealthMode = false;
-        document.title = 'Notes';
-        showScreen('home');
-        trackEvent('stealth_mode_deactivated');
-    } else {
-        alert('Incorrect PIN');
-        trackEvent('failed_unlock');
-    }
-}
-
-// Calculator functionality for stealth mode
-let calcDisplay = '0';
-let calcOperand = null;
-let calcOperation = null;
-let calcNewNumber = true;
-
-function handleCalcInput(value) {
-    const display = document.getElementById('calc-display');
-    
-    if (value === '=') {
-        if (calcOperation && calcOperand !== null) {
-            const current = parseFloat(calcDisplay);
-            let result;
-            switch (calcOperation) {
-                case '+': result = calcOperand + current; break;
-                case '-': result = calcOperand - current; break;
-                case '*': result = calcOperand * current; break;
-                case '/': result = calcOperand / current; break;
-            }
-            calcDisplay = result.toString();
-            calcOperand = null;
-            calcOperation = null;
-            calcNewNumber = true;
-        }
-    } else if (['+', '-', '*', '/'].includes(value)) {
-        calcOperand = parseFloat(calcDisplay);
-        calcOperation = value;
-        calcNewNumber = true;
-    } else {
-        if (calcNewNumber) {
-            calcDisplay = value;
-            calcNewNumber = false;
-        } else {
-            calcDisplay = calcDisplay === '0' ? value : calcDisplay + value;
-        }
-    }
-    
-    display.textContent = calcDisplay;
-}
 
 // Emergency Mode
-function activateEmergencyMode() {
+async function activateEmergencyMode() {
     trackEvent('emergency_mode');
+    await eventLogger.logEvent('emergencyToggled');
     
     if (confirm('This will show you emergency resources and hotlines. Continue?')) {
         showScreen('resources');
@@ -628,6 +572,9 @@ function activateEmergencyMode() {
                 hotlineCategory.click();
             }
         }, 100);
+        
+        // Check for suspicious patterns after emergency activation
+        await unlockHandler.checkSuspiciousPatterns();
     }
 }
 
@@ -642,33 +589,41 @@ function hideSettings() {
     document.getElementById('settings-modal').classList.add('hidden');
 }
 
+// Legacy functions - now handled by stealth system
 function updatePin() {
-    const pin = document.getElementById('pin-input').value;
-    if (pin.length === 4 && /^\d{4}$/.test(pin)) {
-        AppState.pin = pin;
-        localStorage.setItem('safey_pin', pin);
-        alert('PIN updated successfully');
-        document.getElementById('pin-input').value = '';
-    } else {
-        alert('Please enter a 4-digit PIN');
-    }
+    // This is now handled in setupStealthSettingsListeners()
+    console.log('updatePin called - using new stealth system');
 }
 
-function clearAllData() {
-    if (confirm('This will delete all your data including assessment results and safety plan. Are you sure?')) {
+async function clearAllData() {
+    if (confirm('This will delete all your data including assessment results, safety plan, and stealth settings. Are you sure?')) {
+        // Clear old localStorage data
         localStorage.clear();
+        
+        // Clear app state
         AppState.assessmentAnswers = [];
         AppState.riskScore = 0;
         AppState.safetyPlan = null;
         AppState.checkInEvents = [];
+        
+        // Clear stealth data using new system
+        await stealthController.clearAllData();
+        
         alert('All data cleared');
         hideSettings();
         showScreen('home');
     }
 }
 
+
 // Initialize App
-function init() {
+async function init() {
+    // Initialize stealth system first
+    await stealthController.init();
+    
+    // Enable debug keyboard shortcut
+    debugUI.enableKeyboardShortcut();
+    
     // Load saved events
     const savedEvents = localStorage.getItem('safey_events');
     if (savedEvents) {
@@ -692,7 +647,12 @@ function init() {
         displayResources();
     });
     document.getElementById('emergency-btn').addEventListener('click', activateEmergencyMode);
-    document.getElementById('stealth-toggle').addEventListener('click', activateStealthMode);
+    
+    // Stealth toggle now uses the new system
+    document.getElementById('stealth-toggle').addEventListener('click', async () => {
+        await stealthController.activate();
+    });
+    
     document.getElementById('settings-btn').addEventListener('click', showSettings);
     
     // Event Listeners - Assessment Screen
@@ -729,24 +689,122 @@ function init() {
         });
     });
     
-    // Event Listeners - Stealth Mode
-    document.getElementById('calc-unlock').addEventListener('click', deactivateStealthMode);
-    document.querySelectorAll('.calc-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const value = e.target.dataset.value;
-            handleCalcInput(value);
-        });
-    });
-    
     // Event Listeners - Settings Modal
     document.getElementById('close-settings').addEventListener('click', hideSettings);
-    document.getElementById('pin-input').addEventListener('change', updatePin);
     document.getElementById('clear-data').addEventListener('click', clearAllData);
+    
+    // New stealth settings listeners
+    setupStealthSettingsListeners();
     
     // Track app start
     trackEvent('app_start');
+    await eventLogger.logEvent('appStart');
     
     console.log('SAFEY initialized - All data stays on your device');
+}
+
+// Setup stealth settings listeners
+function setupStealthSettingsListeners() {
+    // PIN input
+    document.getElementById('pin-input').addEventListener('blur', async (e) => {
+        const pin = e.target.value;
+        if (pin && pin.length === 4 && /^\d{4}$/.test(pin)) {
+            try {
+                await stealthController.updatePin(pin);
+                alert('PIN updated successfully');
+                e.target.value = '';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+    });
+    
+    // Disguise template
+    const templateSelect = document.getElementById('disguise-template');
+    templateSelect.addEventListener('change', async (e) => {
+        const template = e.target.value;
+        
+        if (template === 'custom') {
+            document.getElementById('custom-url-section').classList.remove('hidden');
+        } else {
+            document.getElementById('custom-url-section').classList.add('hidden');
+            await stealthController.changeTemplate(template);
+        }
+    });
+    
+    // Load current template
+    const currentTemplate = stealthSettings.getSetting('disguiseTemplate');
+    if (currentTemplate) {
+        templateSelect.value = currentTemplate;
+        if (currentTemplate === 'custom') {
+            document.getElementById('custom-url-section').classList.remove('hidden');
+        }
+    }
+    
+    // Custom URL
+    document.getElementById('save-custom-url').addEventListener('click', async () => {
+        const url = document.getElementById('custom-url-input').value;
+        if (url) {
+            try {
+                const saved = await stealthController.setCustomUrl(url);
+                if (saved) {
+                    alert('Custom URL saved successfully');
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+    });
+    
+    // Auto-lock timeout
+    document.getElementById('autolock-timeout').addEventListener('change', async (e) => {
+        const minutes = parseInt(e.target.value);
+        await stealthSettings.updateAutoLockTimeout(minutes);
+    });
+    
+    // Load current timeout
+    const currentTimeout = stealthSettings.getSetting('autoLockTimeout');
+    if (currentTimeout) {
+        document.getElementById('autolock-timeout').value = currentTimeout;
+    }
+    
+    // Triggers
+    document.getElementById('trigger-logo').addEventListener('change', async (e) => {
+        await stealthTriggerHandler.updateSettings({
+            triggersEnabled: { logoDoubleTap: e.target.checked }
+        });
+    });
+    
+    document.getElementById('trigger-corner').addEventListener('change', async (e) => {
+        await stealthTriggerHandler.updateSettings({
+            triggersEnabled: { cornerMultiTap: e.target.checked }
+        });
+    });
+    
+    // Corner tap config
+    document.getElementById('corner-position').addEventListener('change', async (e) => {
+        await stealthTriggerHandler.updateSettings({
+            cornerConfig: { corner: e.target.value }
+        });
+    });
+    
+    document.getElementById('corner-taps').addEventListener('change', async (e) => {
+        await stealthTriggerHandler.updateSettings({
+            cornerConfig: { tapCount: parseInt(e.target.value) }
+        });
+    });
+    
+    // Load current corner config
+    const cornerConfig = stealthSettings.getSetting('cornerTapConfig');
+    if (cornerConfig) {
+        document.getElementById('corner-position').value = cornerConfig.corner || 'top-right';
+        document.getElementById('corner-taps').value = cornerConfig.tapCount || 4;
+    }
+    
+    // Debug toggle
+    document.getElementById('toggle-debug').addEventListener('click', () => {
+        debugUI.toggle();
+    });
 }
 
 // Register Service Worker for PWA
