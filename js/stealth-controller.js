@@ -130,8 +130,9 @@ class StealthController {
         
         // Hide stealth screen
         const stealthScreen = document.getElementById('stealth-screen');
-        stealthScreen.classList.remove('active', 'fade-in');
-        
+        stealthScreen.className = 'screen stealth-mode';
+        stealthScreen.innerHTML = '';
+        console.log(stealthScreen.className);
         // Show home screen
         const homeScreen = document.getElementById('home-screen');
         homeScreen.classList.add('active', 'fade-in');
