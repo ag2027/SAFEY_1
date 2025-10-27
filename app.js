@@ -1,6 +1,33 @@
 // SAFEY - Safety Assessment and Resource Platform
 // All data is stored locally - nothing leaves the device
+// Development mode indicator
+const isDevelopment = window.location.hostname === 'localhost' ||
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.port !== '80' && window.location.port !== '443';
 
+if (isDevelopment) {
+    console.log('🚀 SAFEY Development Mode - Caching disabled');
+    // Add visual indicator
+    document.addEventListener('DOMContentLoaded', () => {
+        const indicator = document.createElement('div');
+        indicator.textContent = 'DEV MODE';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff6b6b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 9999;
+            opacity: 0.8;
+        `;
+        document.body.appendChild(indicator);
+    });
+}
+console.log('SAFEY App loaded at:', new Date().toISOString());
 // State Management
 const AppState = {
     currentScreen: 'home',

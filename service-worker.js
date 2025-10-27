@@ -1,7 +1,13 @@
 // Service Worker for SAFEY PWA
 // Provides offline functionality
 
-const CACHE_NAME = 'safey-v1';
+// Dynamic cache version for development cache-busting
+const CACHE_VERSION = 'safey-v1';
+const isDevelopment = self.location.hostname === 'localhost' ||
+                     self.location.hostname === '127.0.0.1' ||
+                     self.location.port !== '80' && self.location.port !== '443';
+const CACHE_NAME = CACHE_VERSION + (isDevelopment ? '-dev-' + Date.now() : '');
+
 const urlsToCache = [
   '/',
   '/index.html',
@@ -12,6 +18,13 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
+  // Skip caching in development
+  if (isDevelopment) {
+    console.log('SAFEY: Skipping cache in development mode');
+    self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -44,6 +57,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Skip service worker caching in development
+  if (isDevelopment) {
+    return; // Let browser handle normally
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
