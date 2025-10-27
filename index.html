@@ -95,7 +95,7 @@
                     <h1 class="text-2xl font-bold text-gray-800">SAFEY</h1>
                 </div>
                 <div class="flex gap-2">
-                    <button id="stealth-toggle" class="p-2 rounded-lg bg-white hover:bg-gray-100 transition material-shadow" title="Stealth Mode" aria-label="Activate stealth mode">
+                    <button id="stealth-toggle" class="p-2 rounded-lg bg-white hover:bg-gray-100 transition material-shadow" title="Stealth Mode" aria-label="Activate stealth mode" data-trigger="logo">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                         </svg>
@@ -323,26 +323,85 @@
                     </svg>
                 </button>
             </div>
-            <div class="space-y-5">
+            <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">PIN & Stealth Mode</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Stealth Mode PIN</label>
                     <input type="password" id="pin-input" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" placeholder="Enter 4-digit PIN" maxlength="4" aria-label="Set unlock PIN">
-                    <p class="text-xs text-gray-500 mt-1.5">Used to unlock stealth mode (calculator)</p>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Language</label>
-                    <select class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Select language">
-                        <option>English</option>
-                        <option>Spanish (Español)</option>
-                    </select>
+                    <p class="text-xs text-gray-500 mt-1.5">Used to unlock stealth mode. Current PIN: ****</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Trusted Contacts</label>
-                    <p class="text-sm text-gray-600 mb-2">Configure emergency contacts (coming soon)</p>
-                    <button class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-card" disabled aria-label="Add trusted contact">
-                        + Add Contact
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Disguise Template</label>
+                    <select id="disguise-template" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Select disguise template">
+                        <option value="calculator">Calculator</option>
+                        <option value="notes">Notes</option>
+                        <option value="weather">Weather</option>
+                        <option value="news">News Feed</option>
+                        <option value="gallery">Gallery</option>
+                        <option value="custom">Custom URL</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1.5">Choose how SAFEY appears in stealth mode</p>
+                </div>
+
+                <div id="custom-url-section" class="hidden">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Custom URL (HTTPS only)</label>
+                    <input type="url" id="custom-url-input" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" placeholder="https://example.com" aria-label="Enter custom URL">
+                    <button id="save-custom-url" class="w-full mt-2 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition">
+                        Save Custom URL
+                    </button>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Auto-Lock Timeout</label>
+                    <select id="autolock-timeout" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Select auto-lock timeout">
+                        <option value="1">1 minute</option>
+                        <option value="2">2 minutes</option>
+                        <option value="5" selected>5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1.5">Automatically activate stealth after inactivity</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Activation Triggers</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                            <span class="text-sm text-gray-700">Logo double-tap</span>
+                            <input type="checkbox" id="trigger-logo" checked class="rounded border-gray-300 text-trust-blue focus:ring-trust-blue">
+                        </label>
+                        <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                            <span class="text-sm text-gray-700">Corner multi-tap</span>
+                            <input type="checkbox" id="trigger-corner" checked class="rounded border-gray-300 text-trust-blue focus:ring-trust-blue">
+                        </label>
+                    </div>
+                </div>
+
+                <div id="corner-tap-config">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Corner Tap Settings</label>
+                    <div class="grid grid-cols-2 gap-3 mb-2">
+                        <select id="corner-position" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue text-sm">
+                            <option value="top-right">Top Right</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                        </select>
+                        <select id="corner-taps" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue text-sm">
+                            <option value="3">3 taps</option>
+                            <option value="4" selected>4 taps</option>
+                            <option value="5">5 taps</option>
+                            <option value="6">6 taps</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Debug Mode</label>
+                    <button id="toggle-debug" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition text-sm">
+                        Open Debug Panel (Ctrl+Shift+D)
                     </button>
                 </div>
 
@@ -360,6 +419,18 @@
         </div>
     </div>
 
+    <!-- Stealth Mode Scripts (load before main app) -->
+    <script src="js/crypto-utils.js"></script>
+    <script src="js/storage-utils.js"></script>
+    <script src="js/event-logger.js"></script>
+    <script src="js/stealth-settings.js"></script>
+    <script src="js/disguise-renderer.js"></script>
+    <script src="js/stealth-trigger-handler.js"></script>
+    <script src="js/unlock-handler.js"></script>
+    <script src="js/stealth-controller.js"></script>
+    <script src="js/debug-ui.js"></script>
+    
+    <!-- Main App Script -->
     <script src="app.js"></script>
 </body>
 </html>
