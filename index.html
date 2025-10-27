@@ -3,18 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#4F46E5">
+    <meta name="theme-color" content="#3C91E6">
     <meta name="description" content="SAFEY - Discreet safety and resource platform">
     <title>Notes</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'trust-blue': '#3C91E6',
+                        'neutral-bg': '#F4F7FB',
+                        'hopeful-teal': '#69D1C5',
+                        'alert-red': '#E25C5C',
+                        'gentle-green': '#7DD87D',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        'card': '1.5rem',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        }
         .screen {
             display: none;
         }
         .screen.active {
             display: block;
+            animation: fadeIn 0.3s ease-in;
         }
         .fade-in {
             animation: fadeIn 0.3s ease-in;
@@ -23,26 +51,57 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        .fade-out {
+            animation: fadeOut 0.1s ease-out;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
         .stealth-mode {
             font-family: 'Courier New', monospace;
         }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: scale(0.97);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .card-hover:active {
+            transform: scale(0.95);
+        }
+        .btn-scale:active {
+            transform: scale(0.97);
+        }
+        .material-shadow {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .material-shadow-lg {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-neutral-bg min-h-screen">
     <!-- Home Screen -->
     <div id="home-screen" class="screen active">
-        <div class="max-w-md mx-auto p-4">
+        <div class="max-w-md mx-auto p-6">
             <!-- Header -->
-            <div class="flex justify-between items-center mb-6 pt-4">
-                <h1 class="text-2xl font-bold text-gray-800">SAFEY</h1>
+            <div class="flex justify-between items-center mb-8 pt-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-7 h-7 text-trust-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <h1 class="text-2xl font-bold text-gray-800">SAFEY</h1>
+                </div>
                 <div class="flex gap-2">
-                    <button id="stealth-toggle" class="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition" title="Stealth Mode">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button id="stealth-toggle" class="p-2 rounded-lg bg-white hover:bg-gray-100 transition material-shadow" title="Stealth Mode" aria-label="Activate stealth mode">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                         </svg>
                     </button>
-                    <button id="settings-btn" class="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition" title="Settings">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button id="settings-btn" class="p-2 rounded-lg bg-white hover:bg-gray-100 transition material-shadow" title="Settings" aria-label="Open settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -50,49 +109,47 @@
                 </div>
             </div>
 
-            <!-- Main Actions -->
-            <div class="space-y-4">
-                <button id="assessment-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                    <div class="flex items-center justify-between">
-                        <span class="text-lg">Start Assessment</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
+            <!-- Greeting Section -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-1">Welcome back, you're in control.</h2>
+                <p class="text-gray-600 text-sm">Your safety starts here.</p>
+            </div>
+
+            <!-- Main Actions - 2x2 Grid -->
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <button id="assessment-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Start safety assessment">
+                    <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-trust-blue bg-opacity-10">
+                        <span class="text-2xl">🧭</span>
                     </div>
+                    <span class="font-semibold text-gray-800 text-base">Start Assessment</span>
                 </button>
 
-                <button id="safety-plan-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                    <div class="flex items-center justify-between">
-                        <span class="text-lg">View Safety Plan</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+                <button id="safety-plan-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="View your safety plan">
+                    <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-hopeful-teal bg-opacity-10">
+                        <span class="text-2xl">🛡️</span>
                     </div>
+                    <span class="font-semibold text-gray-800 text-base">My Safety Plan</span>
                 </button>
 
-                <button id="resources-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                    <div class="flex items-center justify-between">
-                        <span class="text-lg">Resources</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
+                <button id="resources-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Browse safety resources">
+                    <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-trust-blue bg-opacity-10">
+                        <span class="text-2xl">🏠</span>
                     </div>
+                    <span class="font-semibold text-gray-800 text-base">Resources</span>
                 </button>
 
-                <button id="emergency-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                    <div class="flex items-center justify-between">
-                        <span class="text-lg">Emergency Mode</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+                <button id="emergency-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Access emergency resources">
+                    <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-alert-red bg-opacity-10">
+                        <span class="text-2xl">🚨</span>
                     </div>
+                    <span class="font-semibold text-gray-800 text-base">Emergency Mode</span>
                 </button>
             </div>
 
             <!-- Info Section -->
-            <div class="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p class="text-sm text-blue-800">
-                    <strong>Privacy First:</strong> All data stays on your device. Nothing is sent to external servers.
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-500">
+                    Your data stays private and offline.
                 </p>
             </div>
         </div>
@@ -100,22 +157,25 @@
 
     <!-- Risk Assessment Screen -->
     <div id="assessment-screen" class="screen">
-        <div class="max-w-md mx-auto p-4">
+        <div class="max-w-md mx-auto p-6">
             <div class="flex items-center mb-6 pt-4">
-                <button id="assessment-back" class="p-2 hover:bg-gray-200 rounded-lg transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="assessment-back" class="p-2 hover:bg-white hover:material-shadow rounded-lg transition" aria-label="Go back to home">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <h2 class="text-xl font-bold ml-2">Risk Assessment</h2>
+                <div class="ml-3">
+                    <h2 class="text-xl font-bold text-gray-800">Personal Safety Check</h2>
+                    <p class="text-sm text-gray-600">Answer honestly — this stays on your device.</p>
+                </div>
             </div>
 
             <!-- Progress Bar -->
-            <div class="mb-6">
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div id="progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            <div class="mb-8">
+                <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    <div id="progress-bar" class="h-1.5 rounded-full transition-all duration-300 bg-gradient-to-r from-trust-blue to-hopeful-teal" style="width: 0%"></div>
                 </div>
-                <p class="text-sm text-gray-600 mt-2">Question <span id="current-question">1</span> of <span id="total-questions">8</span></p>
+                <p class="text-xs text-gray-500 mt-2">Question <span id="current-question">1</span> of <span id="total-questions">8</span></p>
             </div>
 
             <!-- Question Container -->
@@ -125,15 +185,18 @@
 
             <!-- Results Container -->
             <div id="results-container" class="hidden">
-                <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
-                    <h3 class="text-xl font-bold mb-4">Your Assessment Results</h3>
-                    <div id="risk-score-display" class="mb-4"></div>
+                <div class="bg-white rounded-card material-shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Your Assessment Results</h3>
+                    <div id="risk-score-display" class="mb-6"></div>
                     <div id="risk-guidance" class="text-gray-700"></div>
                 </div>
-                <button id="view-plan-from-results" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg">
-                    View Safety Plan
+                <button id="view-plan-from-results" class="w-full bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-4 px-6 rounded-card mb-3 transition btn-scale" aria-label="View your safety plan">
+                    Generate My Safety Plan
                 </button>
-                <button id="restart-assessment" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg mt-3">
+                <button id="view-resources-from-results" class="w-full bg-hopeful-teal hover:bg-opacity-90 text-white font-semibold py-4 px-6 rounded-card mb-3 transition btn-scale" aria-label="View local resources">
+                    View Local Resources
+                </button>
+                <button id="restart-assessment" class="w-full bg-white text-gray-700 border border-gray-300 font-semibold py-3 px-6 rounded-card transition hover:bg-gray-50 btn-scale" aria-label="Retake assessment">
                     Take Assessment Again
                 </button>
             </div>
@@ -142,45 +205,74 @@
 
     <!-- Safety Plan Screen -->
     <div id="safety-plan-screen" class="screen">
-        <div class="max-w-md mx-auto p-4">
+        <div class="max-w-md mx-auto p-6">
             <div class="flex items-center mb-6 pt-4">
-                <button id="plan-back" class="p-2 hover:bg-gray-200 rounded-lg transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="plan-back" class="p-2 hover:bg-white hover:material-shadow rounded-lg transition" aria-label="Go back to home">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <h2 class="text-xl font-bold ml-2">Safety Plan</h2>
+                <div class="ml-3">
+                    <h2 class="text-xl font-bold text-gray-800">Your Personalized Safety Plan</h2>
+                    <p class="text-sm text-gray-600">Edit and save steps you feel comfortable with.</p>
+                </div>
             </div>
 
-            <div id="safety-plan-content" class="space-y-4">
+            <div id="safety-plan-content" class="space-y-4 mb-20">
                 <!-- Plan sections will be inserted here -->
             </div>
 
-            <button id="export-plan" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg mt-6">
-                Export Plan
-            </button>
+            <!-- Floating Action Button -->
+            <div class="fixed bottom-6 right-6 md:right-auto md:left-1/2 md:transform md:-translate-x-1/2 md:max-w-md md:w-full md:px-6">
+                <button id="export-plan" class="ml-auto block bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-3 px-6 rounded-full material-shadow-lg transition btn-scale flex items-center gap-2" aria-label="Download safety plan as PDF">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download as PDF
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- Resources Screen -->
     <div id="resources-screen" class="screen">
-        <div class="max-w-md mx-auto p-4">
+        <div class="max-w-md mx-auto p-6">
             <div class="flex items-center mb-6 pt-4">
-                <button id="resources-back" class="p-2 hover:bg-gray-200 rounded-lg transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="resources-back" class="p-2 hover:bg-white hover:material-shadow rounded-lg transition" aria-label="Go back to home">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <h2 class="text-xl font-bold ml-2">Resources</h2>
+                <h2 class="text-xl font-bold ml-3 text-gray-800">Resources</h2>
             </div>
 
-            <!-- Category Filter -->
-            <div class="mb-4 flex gap-2 flex-wrap">
-                <button class="filter-btn active px-4 py-2 rounded-full text-sm font-semibold bg-teal-600 text-white" data-category="all">All</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="shelter">Shelters</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="legal">Legal Aid</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="counseling">Counseling</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300" data-category="hotline">Hotlines</button>
+            <!-- Search Bar -->
+            <div class="mb-4">
+                <div class="relative">
+                    <input type="text" id="resource-search" placeholder="Find nearby shelters, legal aid, or hotlines" class="w-full px-4 py-3 pl-11 bg-white rounded-card border border-gray-200 focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Search resources">
+                    <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Category Tabs -->
+            <div class="mb-6 flex gap-2 flex-wrap">
+                <button class="filter-btn active px-4 py-2 rounded-full text-sm font-semibold bg-trust-blue text-white transition" data-category="all" aria-label="Show all resources">All</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="shelter" aria-label="Show shelters">Shelters</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="legal" aria-label="Show legal aid">Legal Aid</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="counseling" aria-label="Show counseling">Counseling</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="hotline" aria-label="Show hotlines">Hotlines</button>
+            </div>
+
+            <!-- Offline Banner (hidden by default) -->
+            <div id="offline-banner" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-card">
+                <p class="text-sm text-yellow-800 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Offline mode: showing saved resources
+                </p>
             </div>
 
             <!-- Resource List -->
@@ -221,23 +313,47 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg max-w-md w-full mx-4 p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">Settings</h3>
-                <button id="close-settings" class="p-2 hover:bg-gray-200 rounded">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-card max-w-md w-full mx-4 p-6 material-shadow-lg">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Settings</h3>
+                <button id="close-settings" class="p-2 hover:bg-gray-100 rounded-lg transition" aria-label="Close settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
-            <div class="space-y-4">
+            <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium mb-2">Unlock PIN</label>
-                    <input type="password" id="pin-input" class="w-full px-3 py-2 border rounded-lg" placeholder="Enter 4-digit PIN" maxlength="4">
-                    <p class="text-xs text-gray-500 mt-1">Used to unlock stealth mode</p>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">PIN & Stealth Mode</label>
+                    <input type="password" id="pin-input" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" placeholder="Enter 4-digit PIN" maxlength="4" aria-label="Set unlock PIN">
+                    <p class="text-xs text-gray-500 mt-1.5">Used to unlock stealth mode (calculator)</p>
                 </div>
-                <button id="clear-data" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg">
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Language</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Select language">
+                        <option>English</option>
+                        <option>Spanish (Español)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Trusted Contacts</label>
+                    <p class="text-sm text-gray-600 mb-2">Configure emergency contacts (coming soon)</p>
+                    <button class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-card" disabled aria-label="Add trusted contact">
+                        + Add Contact
+                    </button>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">About SAFEY</h4>
+                    <p class="text-sm text-gray-600">Built to empower and protect. All data stays private on your device.</p>
+                </div>
+
+                <button id="clear-data" class="w-full bg-alert-red hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-card transition btn-scale" aria-label="Clear all data">
                     Clear All Data
                 </button>
             </div>
