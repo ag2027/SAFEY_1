@@ -23,6 +23,7 @@ class DebugUI {
         }
         
         const debugInfo = await stealthController.getDebugInfo();
+        const queueStatus = unlockHandler.getSafetyQueueStatus();
         
         this.panel = document.createElement('div');
         this.panel.id = 'debug-panel';
@@ -45,6 +46,22 @@ class DebugUI {
                         <div>Template: <span class="font-mono text-blue-400">${debugInfo.settings?.disguiseTemplate || 'none'}</span></div>
                         <div>Suspicious Count: <span class="font-mono text-yellow-400">${debugInfo.suspiciousCounter}</span></div>
                         <div>Last Activity: <span class="font-mono text-gray-400">${debugInfo.lastActivity}</span></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 mb-2">Safety Queue</h3>
+                    <div class="bg-gray-800 rounded p-3 text-xs space-y-1">
+                        <div>Queue Size: <span class="font-mono ${queueStatus.queueSize > 0 ? 'text-yellow-400' : 'text-green-400'}">${queueStatus.queueSize}/${queueStatus.maxSize}</span></div>
+                        <div>Flushing: <span class="font-mono ${queueStatus.isFlushingQueue ? 'text-yellow-400' : 'text-gray-400'}">${queueStatus.isFlushingQueue}</span></div>
+                        ${queueStatus.queue.length > 0 ? `
+                            <div class="mt-2 pt-2 border-t border-gray-700">
+                                <div class="text-gray-400 mb-1">Queued Alerts:</div>
+                                ${queueStatus.queue.map(alert => `
+                                    <div class="text-xs text-gray-500 truncate" title="${alert.reason}">${alert.reason}</div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -84,6 +101,12 @@ class DebugUI {
                         <button id="debug-clear-events" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-xs font-semibold transition">
                             Clear Events
                         </button>
+                        <button id="debug-flush-queue" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-3 rounded text-xs font-semibold transition">
+                            Flush Queue Now
+                        </button>
+                        <button id="debug-clear-queue" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-xs font-semibold transition">
+                            Clear Queue
+                        </button>
                     </div>
                 </div>
                 
@@ -116,6 +139,17 @@ class DebugUI {
         document.getElementById('debug-clear-events').addEventListener('click', async () => {
             if (confirm('Clear all event logs?')) {
                 await eventLogger.clearEvents();
+                await this.show();
+            }
+        });
+        document.getElementById('debug-flush-queue').addEventListener('click', async () => {
+            console.log('[DEBUG] Manual queue flush triggered');
+            await unlockHandler.flushSafetyQueue();
+            await this.show();
+        });
+        document.getElementById('debug-clear-queue').addEventListener('click', async () => {
+            if (confirm('Clear safety check queue?')) {
+                await unlockHandler.clearSafetyQueue();
                 await this.show();
             }
         });

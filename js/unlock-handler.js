@@ -6,6 +6,9 @@ class UnlockHandler {
         this.failedAttempts = [];
         this.suspiciousCounter = 0;
         this.isUnlocking = false;
+        this.safetyQueue = []; // Queue for pending safety checks during stealth mode
+        this.maxQueueSize = 5; // Prevent queue overflow
+        this.isFlushingQueue = false; // Prevent concurrent queue flushing
     }
 
     // Initialize
@@ -175,6 +178,131 @@ class UnlockHandler {
 
     // Prompt safety check
     async promptSafetyCheck(reason) {
+        console.log(`[SAFEY] Safety check triggered: ${reason}`);
+        
+        // Check if stealth mode is active
+        const isStealthActive = stealthController.isActive;
+        
+        if (isStealthActive) {
+            // Queue the alert instead of showing popup
+            await this.queueSafetyCheck(reason);
+            console.log('[SAFEY] Safety check queued (stealth mode active)');
+            return false; // Queued, not shown
+        } else {
+            // Show popup immediately when not in stealth mode
+            return await this.showSafetyCheckPopup(reason);
+        }
+    }
+
+    // Queue safety check for later (during stealth mode)
+    async queueSafetyCheck(reason) {
+        // Prevent queue overflow
+        if (this.safetyQueue.length >= this.maxQueueSize) {
+            console.log('[SAFEY] Safety queue full, removing oldest alert');
+            this.safetyQueue.shift(); // Remove oldest
+        }
+        
+        const alert = {
+            reason,
+            timestamp: Date.now(),
+            id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+        
+        this.safetyQueue.push(alert);
+        
+        // Log to encrypted storage
+        await eventLogger.logEvent('safetyCheckQueued', {
+            reason,
+            queueSize: this.safetyQueue.length,
+            timestamp: alert.timestamp
+        });
+        
+        // Save queue to localStorage (encrypted)
+        await this.saveSafetyQueue();
+        
+        console.log(`[SAFEY] Safety check queued (${this.safetyQueue.length}/${this.maxQueueSize}): ${reason}`);
+    }
+
+    // Save safety queue to encrypted storage
+    async saveSafetyQueue() {
+        try {
+            const encrypted = await cryptoUtils.encrypt({
+                queue: this.safetyQueue,
+                timestamp: Date.now()
+            });
+            if (encrypted) {
+                localStorage.setItem('safey_safety_queue', encrypted);
+            }
+        } catch (error) {
+            console.error('[SAFEY] Error saving safety queue:', error);
+        }
+    }
+
+    // Load safety queue from encrypted storage
+    async loadSafetyQueue() {
+        try {
+            const encrypted = localStorage.getItem('safey_safety_queue');
+            if (encrypted) {
+                const decrypted = await cryptoUtils.decrypt(encrypted);
+                if (decrypted && decrypted.queue) {
+                    this.safetyQueue = decrypted.queue;
+                    console.log(`[SAFEY] Safety queue loaded: ${this.safetyQueue.length} alerts`);
+                }
+            }
+        } catch (error) {
+            console.error('[SAFEY] Error loading safety queue:', error);
+            this.safetyQueue = [];
+        }
+    }
+
+    // Flush safety queue (show all queued alerts)
+    async flushSafetyQueue() {
+        if (this.isFlushingQueue) {
+            console.log('[SAFEY] Already flushing queue, skipping');
+            return;
+        }
+        
+        if (this.safetyQueue.length === 0) {
+            console.log('[SAFEY] No queued safety checks to flush');
+            return;
+        }
+        
+        this.isFlushingQueue = true;
+        console.log(`[SAFEY] Flushing ${this.safetyQueue.length} queued safety checks`);
+        
+        await eventLogger.logEvent('safetyQueueFlushing', {
+            queueSize: this.safetyQueue.length,
+            timestamp: Date.now()
+        });
+        
+        // Show alerts sequentially with 2-second delay
+        const alerts = [...this.safetyQueue]; // Copy queue
+        this.safetyQueue = []; // Clear queue immediately
+        await this.saveSafetyQueue(); // Save cleared queue
+        
+        for (let i = 0; i < alerts.length; i++) {
+            const alert = alerts[i];
+            console.log(`[SAFEY] Showing queued alert ${i + 1}/${alerts.length}: ${alert.reason}`);
+            
+            await this.showSafetyCheckPopup(alert.reason);
+            
+            // Wait 2 seconds before next alert (except for last one)
+            if (i < alerts.length - 1) {
+                await this.sleep(2000);
+            }
+        }
+        
+        this.isFlushingQueue = false;
+        console.log('[SAFEY] Queue flush complete');
+        
+        await eventLogger.logEvent('safetyQueueFlushed', {
+            alertsShown: alerts.length,
+            timestamp: Date.now()
+        });
+    }
+
+    // Show safety check popup (extracted from promptSafetyCheck)
+    async showSafetyCheckPopup(reason) {
         console.log(`[SAFEY] Prompting safety check: ${reason}`);
         
         // Create slide-up card
@@ -271,6 +399,27 @@ class UnlockHandler {
     resetSuspiciousCounter() {
         this.suspiciousCounter = 0;
         this.failedAttempts = [];
+    }
+
+    // Get safety queue status (for debugging)
+    getSafetyQueueStatus() {
+        return {
+            queueSize: this.safetyQueue.length,
+            maxSize: this.maxQueueSize,
+            isFlushingQueue: this.isFlushingQueue,
+            queue: this.safetyQueue.map(alert => ({
+                reason: alert.reason,
+                timestamp: new Date(alert.timestamp).toLocaleString(),
+                id: alert.id
+            }))
+        };
+    }
+
+    // Clear safety queue (for testing/debugging)
+    async clearSafetyQueue() {
+        this.safetyQueue = [];
+        await this.saveSafetyQueue();
+        console.log('[SAFEY] Safety queue cleared');
     }
 }
 

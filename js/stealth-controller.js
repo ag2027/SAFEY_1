@@ -16,6 +16,18 @@ class StealthController {
         await unlockHandler.init();
         await stealthTriggerHandler.init();
         
+        // Load any queued safety checks from storage
+        await unlockHandler.loadSafetyQueue();
+        
+        // Check if we exited stealth mode previously (flush queue if needed)
+        const wasStealthActive = localStorage.getItem('safey_stealth_was_active');
+        if (wasStealthActive === 'true') {
+            console.log('[SAFEY] Previous stealth session detected, checking queue');
+            localStorage.removeItem('safey_stealth_was_active');
+            // Flush queue after a short delay to let UI settle
+            setTimeout(() => unlockHandler.flushSafetyQueue(), 1000);
+        }
+        
         // Set up event listeners
         this.setupEventListeners();
         
@@ -23,6 +35,7 @@ class StealthController {
         this.setupActivityTracking();
         
         console.log('[SAFEY] Stealth system initialized');
+
     }
 
     // Set up event listeners
@@ -91,6 +104,9 @@ class StealthController {
         console.log(`[SAFEY] Activating stealth mode (auto-lock: ${isAutoLock})`);
         this.isActive = true;
         
+        // Mark stealth mode as active in localStorage
+        localStorage.setItem('safey_stealth_was_active', 'true');
+        
         // Log activation
         await eventLogger.logEvent('stealthActivated', { 
             autoLock: isAutoLock,
@@ -128,11 +144,14 @@ class StealthController {
         console.log('[SAFEY] Deactivating stealth mode');
         this.isActive = false;
         
+        // Clear stealth flag (will flush queue on next init if needed)
+        localStorage.removeItem('safey_stealth_was_active');
+        
         // Hide stealth screen
         const stealthScreen = document.getElementById('stealth-screen');
         stealthScreen.className = 'screen stealth-mode';
         stealthScreen.innerHTML = '';
-        //console.log(stealthScreen.className);
+        
         // Show home screen
         const homeScreen = document.getElementById('home-screen');
         homeScreen.classList.add('active', 'fade-in');
@@ -145,6 +164,12 @@ class StealthController {
         
         // Reset title
         document.title = 'Notes';
+        
+        // Flush any queued safety checks after UI settles
+        console.log('[SAFEY] Checking for queued safety checks...');
+        setTimeout(async () => {
+            await unlockHandler.flushSafetyQueue();
+        }, 500); // Wait 500ms for UI to transition
     }
 
     // Get current state
