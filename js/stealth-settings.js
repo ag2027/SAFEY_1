@@ -102,6 +102,11 @@ class StealthSettings {
             if (encrypted && typeof encrypted === 'object' && encrypted.value) {
                 encrypted = encrypted.value;
             }
+            
+            // Fallback to localStorage backup if IndexedDB miss
+            if (!encrypted) {
+                encrypted = localStorage.getItem('safey_settings_encrypted');
+            }
             if (encrypted) {
                 this.flags.hadExistingSettings = true;
                 let decrypted = await cryptoUtils.decrypt(encrypted);
@@ -125,6 +130,7 @@ class StealthSettings {
 
                 console.warn('[SAFEY] Stealth settings corrupted. Resetting to defaults.');
                 await storageUtils.deleteData('settings', 'stealth');
+                localStorage.removeItem('safey_settings_encrypted');
                 this.settings = null;
                 this.flags.resetPerformed = true;
             } else {
@@ -141,6 +147,7 @@ class StealthSettings {
         } catch (error) {
             console.error('Error loading stealth settings:', error);
             await storageUtils.deleteData('settings', 'stealth');
+            localStorage.removeItem('safey_settings_encrypted');
             this.settings = null;
             this.flags.resetPerformed = true;
         }
@@ -153,6 +160,8 @@ class StealthSettings {
             const encrypted = await cryptoUtils.encrypt(this.settings);
             if (encrypted) {
                 await storageUtils.saveData('settings', 'stealth', encrypted);
+                // Keep localStorage backup for resilience and faster cold-start
+                localStorage.setItem('safey_settings_encrypted', encrypted);
                 console.log('[SAFEY] Stealth settings saved');
                 await eventLogger.logEvent('settingsUpdated', {
                     template: this.settings.disguiseTemplate

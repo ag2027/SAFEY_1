@@ -860,17 +860,24 @@ function setupStealthSettingsListeners() {
     }
     
     // Triggers
-    document.getElementById('trigger-logo').addEventListener('change', async (e) => {
+    const triggerLogoCheckbox = document.getElementById('trigger-logo');
+    const triggerCornerCheckbox = document.getElementById('trigger-corner');
+
+    triggerLogoCheckbox.addEventListener('change', async (e) => {
         await stealthTriggerHandler.updateSettings({
             triggersEnabled: { logoDoubleTap: e.target.checked }
         });
     });
     
-    document.getElementById('trigger-corner').addEventListener('change', async (e) => {
+    triggerCornerCheckbox.addEventListener('change', async (e) => {
         await stealthTriggerHandler.updateSettings({
             triggersEnabled: { cornerMultiTap: e.target.checked }
         });
     });
+
+    const triggersEnabled = stealthSettings.getSetting('triggersEnabled') || {};
+    triggerLogoCheckbox.checked = triggersEnabled.logoDoubleTap !== false;
+    triggerCornerCheckbox.checked = triggersEnabled.cornerMultiTap !== false;
     
     // Corner tap config
     document.getElementById('corner-position').addEventListener('change', async (e) => {
