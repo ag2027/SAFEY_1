@@ -28,6 +28,49 @@ if (isDevelopment) {
     });
 }
 console.log('SAFEY App loaded at:', new Date().toISOString());
+
+// Toast Notification System
+function showToast(message, type = 'info', duration = 3000) {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.safey-toast');
+    existingToasts.forEach(toast => toast.remove());
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `safey-toast fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 max-w-sm`;
+    
+    // Set colors based on type
+    const colors = {
+        success: 'bg-green-500 text-white',
+        error: 'bg-red-500 text-white',
+        warning: 'bg-yellow-500 text-black',
+        info: 'bg-blue-500 text-white'
+    };
+    
+    toast.classList.add(...colors[type].split(' '));
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <div class="flex-1">${message}</div>
+            <button class="ml-2 opacity-70 hover:opacity-100" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Auto remove
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
 // State Management
 const AppState = {
     currentScreen: 'home',
@@ -695,18 +738,32 @@ async function init() {
 // Setup stealth settings listeners
 function setupStealthSettingsListeners() {
     // PIN input
-    document.getElementById('pin-input').addEventListener('blur', async (e) => {
+    const pinInput = document.getElementById('pin-input');
+    const updatePinInputValidation = () => {
+        const pinLength = stealthSettings.getSetting('pinLength') || 6;
+        pinInput.maxLength = pinLength;
+        pinInput.placeholder = `Enter ${pinLength}-digit PIN`;
+        pinInput.setAttribute('aria-label', `Set ${pinLength}-digit unlock PIN`);
+    };
+    
+    pinInput.addEventListener('blur', async (e) => {
         const pin = e.target.value;
-        if (pin && pin.length === 4 && /^\d{4}$/.test(pin)) {
+        const pinLength = stealthSettings.getSetting('pinLength') || 6;
+        const pinRegex = new RegExp(`^\\d{${pinLength}}$`);
+        
+        if (pin && pin.length === pinLength && pinRegex.test(pin)) {
             try {
                 await stealthController.updatePin(pin);
-                alert('PIN updated successfully');
+                showToast('PIN updated successfully', 'success');
                 e.target.value = '';
             } catch (error) {
-                alert(error.message);
+                showToast(error.message, 'error');
             }
         }
     });
+    
+    // Initialize PIN input validation
+    updatePinInputValidation();
     
     // Disguise template
     const templateSelect = document.getElementById('disguise-template');
@@ -736,15 +793,25 @@ function setupStealthSettingsListeners() {
         }
     });
     
-    // Load current template
-    const currentTemplate = stealthSettings.getSetting('disguiseTemplate');
-    if (currentTemplate) {
-        templateSelect.value = currentTemplate;
-        updateUnlockHint(currentTemplate);
-        if (currentTemplate === 'custom') {
-            document.getElementById('custom-url-section').classList.remove('hidden');
+    // PIN length selector
+    const pinLengthSelect = document.getElementById('pin-length-select');
+    pinLengthSelect.addEventListener('change', async (e) => {
+        const newLength = parseInt(e.target.value);
+        try {
+            await stealthSettings.updatePinLength(newLength);
+            updatePinInputValidation();
+            showToast(`PIN length updated to ${newLength} digits`, 'success');
+        } catch (error) {
+            showToast(error.message, 'error');
+            // Reset to current value
+            const currentLength = stealthSettings.getSetting('pinLength') || 6;
+            pinLengthSelect.value = currentLength;
         }
-    }
+    });
+    
+    // Load current PIN length
+    const currentPinLength = stealthSettings.getSetting('pinLength') || 6;
+    pinLengthSelect.value = currentPinLength;
     
     // Custom URL
     document.getElementById('save-custom-url').addEventListener('click', async () => {

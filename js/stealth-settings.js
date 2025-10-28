@@ -6,6 +6,7 @@ class StealthSettings {
         this.defaults = {
             pin: null, // Will be hashed
             pinHash: null,
+            pinLength: 6, // Configurable PIN length (4-8 digits), default 6 for better security
             disguiseTemplate: 'calculator', // calculator, notes, weather, news, gallery, custom
             customUrl: null,
             customUrlSnapshot: null,
@@ -88,14 +89,28 @@ class StealthSettings {
 
     // Update PIN
     async updatePin(newPin) {
-        if (!newPin || !/^\d{4}$/.test(newPin)) {
-            throw new Error('PIN must be 4 digits');
+        const pinLength = this.getSetting('pinLength') || 6;
+        const pinRegex = new RegExp(`^\\d{${pinLength}}$`);
+        
+        if (!newPin || !pinRegex.test(newPin)) {
+            throw new Error(`PIN must be ${pinLength} digits`);
         }
         
         this.settings.pinHash = await cryptoUtils.hashPin(newPin);
         delete this.settings.pin; // Ensure no plain text
         await this.saveSettings();
         console.log('[SAFEY] PIN updated');
+    }
+
+    // Update PIN length (4-8 digits)
+    async updatePinLength(length) {
+        if (length < 4 || length > 8) {
+            throw new Error('PIN length must be between 4 and 8 digits');
+        }
+        
+        this.settings.pinLength = length;
+        await this.saveSettings();
+        console.log(`[SAFEY] PIN length updated to ${length} digits`);
     }
 
     // Verify PIN

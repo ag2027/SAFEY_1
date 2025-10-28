@@ -345,6 +345,9 @@ Notes:
         let consecutiveEqualPresses = 0; // Track consecutive '=' presses after correct PIN
         let correctPinEntered = false; // Flag for correct PIN entry
         
+        // Get configured PIN length
+        const pinLength = stealthSettings.getSetting('pinLength') || 6;
+        
         buttons.forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const value = e.target.dataset.value;
@@ -352,8 +355,8 @@ Notes:
                 // Track PIN attempt (digits only)
                 if (/^\d$/.test(value)) {
                     pinAttempt += value;
-                    if (pinAttempt.length > 4) {
-                        pinAttempt = pinAttempt.slice(-4);
+                    if (pinAttempt.length > pinLength) {
+                        pinAttempt = pinAttempt.slice(-pinLength);
                     }
                     // Reset equal presses counter on digit input
                     consecutiveEqualPresses = 0;
@@ -374,8 +377,8 @@ Notes:
                             return;
                         }
                         // Continue with normal calculation for first 2 '=' presses
-                    } else if (pinAttempt.length === 4) {
-                        // First '=' press with 4-digit PIN - start counting
+                    } else if (pinAttempt.length === pinLength) {
+                        // First '=' press with complete PIN - start counting
                         correctPinEntered = true;
                         consecutiveEqualPresses = 1;
                         // Continue with normal calculation - don't unlock yet
