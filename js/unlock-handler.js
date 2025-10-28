@@ -16,6 +16,7 @@ class UnlockHandler {
     // Initialize
     async init() {
         await stealthSettings.init();
+        await lockoutManager.init();
         
         // Ensure default PIN exists
         const pinHash = stealthSettings.getSetting('pinHash');
@@ -34,6 +35,21 @@ class UnlockHandler {
         this.isUnlocking = true;
         
         try {
+            // Check if currently locked out
+            if (lockoutManager.isLockedOut()) {
+                const remainingTime = lockoutManager.getRemainingLockoutTime();
+                const timeStr = lockoutManager.formatLockoutTime(remainingTime);
+                const level = lockoutManager.getCurrentLevel();
+                
+                console.log(`[SAFEY] Unlock blocked - locked out for ${timeStr}`);
+                
+                // Queue lockout notification
+                const message = `Access is temporarily locked. Please wait ${timeStr} before trying again.`;
+                await this.queueSafetyCheck(message, this.riskLevels.HIGH);
+                
+                return false;
+            }
+            
             await eventLogger.logEvent('unlockAttempt', { 
                 timestamp: Date.now(),
                 pinLength: pin?.length || 0
@@ -44,6 +60,7 @@ class UnlockHandler {
             if (isValid) {
                 console.log('[SAFEY] Unlock successful');
                 await eventLogger.logEvent('unlockSuccess');
+                await lockoutManager.recordSuccess();
                 await this.handleUnlockSuccess();
                 return true;
             } else {
@@ -83,7 +100,10 @@ class UnlockHandler {
     async handleUnlockFailure() {
         const now = Date.now();
         
-        // Add failed attempt
+        // Record failure in lockout manager
+        const lockoutResult = await lockoutManager.recordFailure();
+        
+        // Add failed attempt to legacy tracking
         this.failedAttempts.push({
             timestamp: now,
             userAgent: navigator.userAgent.substring(0, 50)
@@ -99,8 +119,23 @@ class UnlockHandler {
         );
         
         console.log(`[SAFEY] Failed attempts in window: ${this.failedAttempts.length}/${threshold}`);
+        console.log(`[SAFEY] Lockout level: ${lockoutResult.level}, Locked: ${lockoutResult.isLockedOut}`);
         
-        // Check if threshold exceeded
+        // Handle progressive lockout
+        if (lockoutResult.level === 3) {
+            // Level 3: Show data reset warning
+            await this.showDataResetWarning();
+        } else if (lockoutResult.level > 0 && lockoutResult.isLockedOut) {
+            // Level 1 or 2: Queue lockout notification
+            const message = lockoutManager.getLockoutMessage(lockoutResult.level);
+            const timeStr = lockoutManager.formatLockoutTime(lockoutResult.remainingTime);
+            await this.queueSafetyCheck(
+                `${message} (${timeStr} remaining)`,
+                this.riskLevels.HIGH
+            );
+        }
+        
+        // Check if threshold exceeded (legacy behavior)
         if (this.failedAttempts.length >= threshold) {
             console.log('[SAFEY] Failed attempt threshold exceeded - suspicious behavior detected');
             this.suspiciousCounter++;
@@ -708,6 +743,155 @@ class UnlockHandler {
             }
         };
         document.addEventListener('keydown', handleEsc);
+    }
+
+    // Show data reset warning modal (level 3 lockout)
+    async showDataResetWarning() {
+        console.log('[SAFEY] Showing data reset warning (Level 3 lockout)');
+        
+        // Queue the warning if in stealth mode
+        if (stealthController.isActive) {
+            await this.queueSafetyCheck(
+                '🚨 CRITICAL: 10 failed unlock attempts detected. All data will be reset as a security measure. This cannot be undone.',
+                this.riskLevels.HIGH
+            );
+            return;
+        }
+        
+        // Show modal immediately if not in stealth mode
+        const modal = document.createElement('div');
+        modal.id = 'data-reset-warning-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+        modal.setAttribute('role', 'alertdialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'reset-warning-title');
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full transform scale-95 transition-transform duration-200">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 id="reset-warning-title" class="text-lg font-bold text-red-900 mb-2">🚨 Critical Security Alert</h3>
+                        <p class="text-sm text-gray-700 mb-3">
+                            <strong>10 failed unlock attempts</strong> have been detected. For your security and privacy, all app data will be permanently deleted.
+                        </p>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                            <p class="text-xs text-red-800 font-medium mb-1">⚠️ This will delete:</p>
+                            <ul class="text-xs text-red-700 space-y-1 list-disc list-inside">
+                                <li>All stealth mode settings</li>
+                                <li>PIN and security data</li>
+                                <li>Event logs and history</li>
+                                <li>All stored information</li>
+                            </ul>
+                        </div>
+                        <p class="text-xs text-red-600 font-bold">⚠️ This action cannot be undone!</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="reset-cancel-btn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition">
+                        Cancel
+                    </button>
+                    <button id="reset-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition">
+                        Reset All Data
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.querySelector('.bg-white').classList.remove('scale-95');
+            modal.querySelector('.bg-white').classList.add('scale-100');
+        });
+        
+        // Focus the cancel button (safer default)
+        setTimeout(() => {
+            document.getElementById('reset-cancel-btn')?.focus();
+        }, 100);
+        
+        // Handle buttons
+        return new Promise((resolve) => {
+            const cleanup = () => {
+                modal.querySelector('.bg-white').classList.add('scale-95');
+                setTimeout(() => modal.remove(), 200);
+            };
+            
+            document.getElementById('reset-cancel-btn').addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+            
+            document.getElementById('reset-confirm-btn').addEventListener('click', async () => {
+                cleanup();
+                await lockoutManager.triggerDataReset();
+                
+                // Show confirmation
+                this.showDataResetConfirmation();
+                resolve(true);
+            });
+            
+            // ESC key to cancel
+            const handleEsc = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    document.removeEventListener('keydown', handleEsc);
+                    resolve(false);
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
+        });
+    }
+
+    // Show data reset confirmation
+    showDataResetConfirmation() {
+        const modal = document.createElement('div');
+        modal.id = 'data-reset-confirmation';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full transform scale-95 transition-transform duration-200">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold text-gray-900 mb-2">✅ Data Reset Complete</h3>
+                        <p class="text-sm text-gray-600 mb-3">
+                            All app data has been permanently deleted. You can now set up SAFEY with a new PIN.
+                        </p>
+                        <p class="text-xs text-gray-500 italic">The app will reload to complete the reset.</p>
+                    </div>
+                </div>
+                <button id="reset-done-btn" class="w-full bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-lg transition">
+                    Reload App
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.querySelector('.bg-white').classList.remove('scale-95');
+            modal.querySelector('.bg-white').classList.add('scale-100');
+        });
+        
+        // Focus button
+        setTimeout(() => {
+            document.getElementById('reset-done-btn')?.focus();
+        }, 100);
+        
+        document.getElementById('reset-done-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
     }
 
     // Helper: sleep
