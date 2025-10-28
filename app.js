@@ -710,8 +710,23 @@ function setupStealthSettingsListeners() {
     
     // Disguise template
     const templateSelect = document.getElementById('disguise-template');
+    const templateUnlockHint = document.getElementById('template-unlock-hint');
+    
+    // Function to update unlock hint based on template
+    const updateUnlockHint = (template) => {
+        if (template === 'calculator') {
+            templateUnlockHint.textContent = '🔒 Secure (= three times) - Enter PIN then press = three times to unlock';
+            templateUnlockHint.classList.remove('hidden');
+        } else {
+            templateUnlockHint.classList.add('hidden');
+        }
+    };
+    
     templateSelect.addEventListener('change', async (e) => {
         const template = e.target.value;
+        
+        // Update unlock hint
+        updateUnlockHint(template);
         
         if (template === 'custom') {
             document.getElementById('custom-url-section').classList.remove('hidden');
@@ -725,6 +740,7 @@ function setupStealthSettingsListeners() {
     const currentTemplate = stealthSettings.getSetting('disguiseTemplate');
     if (currentTemplate) {
         templateSelect.value = currentTemplate;
+        updateUnlockHint(currentTemplate);
         if (currentTemplate === 'custom') {
             document.getElementById('custom-url-section').classList.remove('hidden');
         }

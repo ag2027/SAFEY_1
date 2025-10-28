@@ -342,6 +342,8 @@ Notes:
         let operation = null;
         let newNumber = true;
         let pinAttempt = '';
+        let consecutiveEqualPresses = 0; // Track consecutive '=' presses after correct PIN
+        let correctPinEntered = false; // Flag for correct PIN entry
         
         buttons.forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -353,23 +355,33 @@ Notes:
                     if (pinAttempt.length > 4) {
                         pinAttempt = pinAttempt.slice(-4);
                     }
+                    // Reset equal presses counter on digit input
+                    consecutiveEqualPresses = 0;
+                    correctPinEntered = false;
                 }
                 
                 if (value === '=') {
-                    // Check if PIN was entered
-                    if (pinAttempt.length === 4) {
-                        if (typeof unlockHandler !== 'undefined') {
-                            const isValid = await unlockHandler.attemptUnlock(pinAttempt);
-                            if (!isValid) {
-                                pinAttempt = '';
+                    // Check if we already verified correct PIN and are counting '=' presses
+                    if (correctPinEntered) {
+                        consecutiveEqualPresses++;
+                        //console.log('[SAFEY] Consecutive = presses:', consecutiveEqualPresses);
+                        // Unlock after 3 consecutive '=' presses
+                        if (consecutiveEqualPresses >= 3) {
+                            if (typeof unlockHandler !== 'undefined') {
+                                // Actually unlock and exit stealth mode
+                                await unlockHandler.attemptUnlock(pinAttempt);
                             }
-                        } else {
-                            console.error('[SAFEY] unlockHandler not available');
+                            return;
                         }
-                        return;
+                        // Continue with normal calculation for first 2 '=' presses
+                    } else if (pinAttempt.length === 4) {
+                        // First '=' press with 4-digit PIN - start counting
+                        correctPinEntered = true;
+                        consecutiveEqualPresses = 1;
+                        // Continue with normal calculation - don't unlock yet
                     }
                     
-                    // Normal calculation
+                    // Normal calculation regardless of PIN state
                     if (operation && operand !== null) {
                         const current = parseFloat(currentValue);
                         let result;
@@ -385,6 +397,10 @@ Notes:
                         newNumber = true;
                     }
                 } else if (['+', '-', '*', '/'].includes(value)) {
+                    // Reset equal presses counter on operation input
+                    consecutiveEqualPresses = 0;
+                    correctPinEntered = false;
+                    
                     operand = parseFloat(currentValue);
                     operation = value;
                     newNumber = true;
@@ -407,6 +423,8 @@ Notes:
             operation = null;
             newNumber = true;
             pinAttempt = '';
+            consecutiveEqualPresses = 0;
+            correctPinEntered = false;
             display.textContent = currentValue;
         });
     }
