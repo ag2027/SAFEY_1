@@ -596,6 +596,13 @@ function showEmergencyMode() {
     eventLogger.logEvent('emergencyModeActivated');
     showScreen('emergency');
     
+    // Sync the silent mode toggle with saved setting
+    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
+    const silentModeToggle = document.getElementById('silent-mode-toggle');
+    if (silentModeToggle) {
+        silentModeToggle.checked = silentModeEnabled;
+    }
+    
     // Suspend background safety checks to avoid conflicting popups
     if (window.unlockHandler && unlockHandler.pauseSafetyChecks) {
         unlockHandler.pauseSafetyChecks();
@@ -775,6 +782,13 @@ async function init() {
     silentModeToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('safey_silent_emergency_enabled', enabled);
+        
+        // Sync with the settings toggle if it exists
+        const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
+        if (silentEmergencyEnabledCheckbox) {
+            silentEmergencyEnabledCheckbox.checked = enabled;
+        }
+        
         showToast(
             enabled ? 'Silent emergency mode enabled' : 'Silent emergency mode disabled',
             'success'
@@ -1032,6 +1046,13 @@ function setupStealthSettingsListeners() {
         silentEmergencyEnabledCheckbox.addEventListener('change', (e) => {
             const enabled = e.target.checked;
             localStorage.setItem('safey_silent_emergency_enabled', enabled);
+            
+            // Sync with the emergency screen toggle if it exists
+            const silentModeToggle = document.getElementById('silent-mode-toggle');
+            if (silentModeToggle) {
+                silentModeToggle.checked = enabled;
+            }
+            
             showToast(
                 enabled ? 'Silent emergency mode enabled in settings' : 'Silent emergency mode disabled in settings',
                 'success'
