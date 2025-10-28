@@ -1077,7 +1077,8 @@ if ('serviceWorker' in navigator) {
             const pathname = window.location.pathname;
             // If we're at a path like /SAFEY_1/, extract the base
             const match = pathname.match(/^(\/[^\/]+)\//);
-            if (match && window.location.hostname.includes('github.io')) {
+            // Only apply base path for GitHub Pages (must end with .github.io)
+            if (match && window.location.hostname.endsWith('.github.io')) {
                 return match[1] + '/service-worker.js';
             }
             return '/service-worker.js';

@@ -13,7 +13,9 @@ const CACHE_NAME = CACHE_VERSION + (isDevelopment ? '-dev-' + Date.now() : '');
 // For user pages or local dev, it will be '/'
 const getBasePath = () => {
   const pathname = self.location.pathname;
-  // If we're at a path like /SAFEY_1/service-worker.js, extract /SAFEY_1/
+  // Extract base path from service worker URL
+  // Pattern: /PROJECT_NAME/service-worker.js -> /PROJECT_NAME/
+  // Matches first path segment after root (e.g., /SAFEY_1/ from /SAFEY_1/service-worker.js)
   const match = pathname.match(/^(\/[^\/]+)\//);
   if (match && !isDevelopment) {
     return match[1] + '/';
