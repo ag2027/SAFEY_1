@@ -589,26 +589,86 @@ function displayResources(category = 'all') {
 // Keeping for backward compatibility but these are no longer used
 
 
-// Emergency Mode
-async function activateEmergencyMode() {
-    trackEvent('emergency_mode');
-    await eventLogger.logEvent('emergencyToggled');
+// Emergency Mode - start
+// Helper function to sync silent mode toggles
+function syncSilentModeToggles() {
+    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
+    const silentModeToggle = document.getElementById('silent-mode-toggle');
+    const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
     
-    // Auto-activate emergency mode - no blocking dialog during crisis
-    showScreen('resources');
-    displayResources('hotline');
-    
-    // Highlight emergency resources
-    setTimeout(() => {
-        const hotlineCategory = document.querySelector('[data-category="hotline"]');
-        if (hotlineCategory) {
-            hotlineCategory.click();
-        }
-    }, 100);
-    
-    // Check for suspicious patterns after emergency activation
-    await unlockHandler.checkSuspiciousPatterns();
+    if (silentModeToggle) {
+        silentModeToggle.checked = silentModeEnabled;
+    }
+    if (silentEmergencyEnabledCheckbox) {
+        silentEmergencyEnabledCheckbox.checked = silentModeEnabled;
+    }
 }
+
+// Show Emergency Mode Screen
+function showEmergencyMode() {
+    trackEvent('emergency_mode');
+    eventLogger.logEvent('emergencyModeActivated');
+    showScreen('emergency');
+    
+    // Sync the silent mode toggle with saved setting
+    syncSilentModeToggles();
+    
+    // Suspend background safety checks to avoid conflicting popups
+    if (window.unlockHandler && unlockHandler.pauseSafetyChecks) {
+        unlockHandler.pauseSafetyChecks();
+    }
+}
+
+// Silent Emergency Mode function
+async function silentEmergencyMode() {
+    // Check if silent emergency mode is enabled
+    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
+    
+    if (!silentModeEnabled) {
+        console.log('Silent emergency mode is disabled');
+        return;
+    }
+    
+    // Log the event without any visible UI changes
+    trackEvent('silent_emergency_triggered');
+    await eventLogger.logEvent('silentEmergencyTriggered');
+    
+    // Add to encrypted event log
+    console.log('Silent emergency event logged at:', new Date().toISOString());
+    
+    // Vibrate once for silent confirmation (if supported)
+    if (navigator.vibrate) {
+        navigator.vibrate(100);
+    }
+    
+    // Add event to alert queue without showing it
+    // This will be visible when stealth mode is exited
+    const silentEvent = {
+        type: 'silent_emergency',
+        timestamp: Date.now(),
+        message: 'Silent emergency triggered'
+    };
+    
+    // Store in queue
+    const eventQueue = JSON.parse(localStorage.getItem('safey_silent_events') || '[]');
+    eventQueue.push(silentEvent);
+    localStorage.setItem('safey_silent_events', JSON.stringify(eventQueue));
+}
+
+// Send Trusted Contact Alert (stub for now)
+function sendTrustedContactAlert() {
+    // TODO: Implement trusted contact messaging
+    // For now, show a toast notification
+    showToast('Trusted contact feature coming soon. Please use Call 911 for immediate help.', 'info', 5000);
+    trackEvent('trusted_contact_attempted');
+    eventLogger.logEvent('trustedContactAlertAttempted');
+}
+
+// Legacy emergency mode function - redirect to new implementation
+async function activateEmergencyMode() {
+    showEmergencyMode();
+}
+// Emergency Mode - end
 
 // Settings Functions
 function showSettings() {
@@ -717,6 +777,73 @@ async function init() {
     
     // Event Listeners - Resources Screen
     document.getElementById('resources-back').addEventListener('click', () => showScreen('home'));
+    
+    // Emergency Mode - start
+    // Event Listeners - Emergency Screen
+    document.getElementById('emergency-back').addEventListener('click', () => showScreen('home'));
+    document.getElementById('text-trusted-contact').addEventListener('click', sendTrustedContactAlert);
+    document.getElementById('view-nearby-resources').addEventListener('click', () => {
+        showScreen('resources');
+        displayResources('hotline');
+    });
+    
+    // Silent mode toggle on emergency screen
+    const silentModeToggle = document.getElementById('silent-mode-toggle');
+    silentModeToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('safey_silent_emergency_enabled', enabled);
+        
+        // Sync with the settings toggle
+        syncSilentModeToggles();
+        
+        showToast(
+            enabled ? 'Silent emergency mode enabled' : 'Silent emergency mode disabled',
+            'success'
+        );
+    });
+    
+    // Load saved silent mode setting
+    syncSilentModeToggles();
+    
+    // Triple-tap gesture listener for silent emergency mode
+    let tapCount = 0;
+    let tapTimer = null;
+    const TAP_TIMEOUT = 500; // ms between taps
+    const CORNER_SIZE = 100; // pixels for corner detection
+    
+    document.addEventListener('click', (e) => {
+        // Check if click is in bottom-right corner
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        const isBottomRight = (
+            e.clientX > (windowWidth - CORNER_SIZE) &&
+            e.clientY > (windowHeight - CORNER_SIZE)
+        );
+        
+        if (isBottomRight) {
+            tapCount++;
+            
+            // Clear existing timer
+            if (tapTimer) {
+                clearTimeout(tapTimer);
+            }
+            
+            // Check if we've reached 3 taps
+            if (tapCount >= 3) {
+                silentEmergencyMode();
+                tapCount = 0;
+                tapTimer = null;
+            } else {
+                // Reset counter after timeout
+                tapTimer = setTimeout(() => {
+                    tapCount = 0;
+                    tapTimer = null;
+                }, TAP_TIMEOUT);
+            }
+        }
+    });
+    // Emergency Mode - end
     
     // Resource filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -917,6 +1044,28 @@ function setupStealthSettingsListeners() {
     document.getElementById('toggle-debug').addEventListener('click', () => {
         debugUI.toggle();
     });
+    
+    // Emergency Mode - start
+    // Silent emergency toggle in settings
+    const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
+    if (silentEmergencyEnabledCheckbox) {
+        silentEmergencyEnabledCheckbox.addEventListener('change', (e) => {
+            const enabled = e.target.checked;
+            localStorage.setItem('safey_silent_emergency_enabled', enabled);
+            
+            // Sync with the emergency screen toggle
+            syncSilentModeToggles();
+            
+            showToast(
+                enabled ? 'Silent emergency mode enabled' : 'Silent emergency mode disabled',
+                'success'
+            );
+        });
+        
+        // Load current setting
+        syncSilentModeToggles();
+    }
+    // Emergency Mode - end
 }
 
 // Register Service Worker for PWA
