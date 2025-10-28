@@ -24,6 +24,11 @@ class DebugUI {
         
         const debugInfo = await stealthController.getDebugInfo();
         const queueStatus = unlockHandler.getSafetyQueueStatus();
+
+        if (typeof safeyLogger !== 'undefined') {
+            this.previousLoggerState = safeyLogger.isDebugEnabled();
+            safeyLogger.setDebugEnabled(true);
+        }
         
         this.panel = document.createElement('div');
         this.panel.id = 'debug-panel';
@@ -173,6 +178,10 @@ class DebugUI {
             }, 300);
         }
         this.isVisible = false;
+
+        if (typeof safeyLogger !== 'undefined') {
+            safeyLogger.setDebugEnabled(Boolean(this.previousLoggerState));
+        }
     }
 
     // Enable debug mode keyboard shortcut (Ctrl+Shift+D)

@@ -87,12 +87,20 @@ class StealthSettings {
             await this.saveSettings();
         }
 
+        this.applyDebugLoggingPreference();
+
         return {
             pinReset,
             pinLength: this.settings.pinLength,
             hadExistingSettings: this.flags.hadExistingSettings,
             resetPerformed: this.flags.resetPerformed
         };
+    }
+
+    applyDebugLoggingPreference() {
+        if (typeof safeyLogger !== 'undefined') {
+            safeyLogger.setDebugEnabled(this.settings?.debugMode === true);
+        }
     }
 
     // Load settings from storage
@@ -166,6 +174,7 @@ class StealthSettings {
                 await eventLogger.logEvent('settingsUpdated', {
                     template: this.settings.disguiseTemplate
                 });
+                this.applyDebugLoggingPreference();
             }
         } catch (error) {
             console.error('Error saving stealth settings:', error);

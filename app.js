@@ -653,9 +653,9 @@ async function clearAllData() {
         // Clear stealth data using new system
         await stealthController.clearAllData();
         
-        alert('All data cleared');
         hideSettings();
         showScreen('home');
+        showToast('All data cleared', 'success', 4000);
     }
 }
 
@@ -839,10 +839,10 @@ function setupStealthSettingsListeners() {
             try {
                 const saved = await stealthController.setCustomUrl(url);
                 if (saved) {
-                    alert('Custom URL saved successfully');
+                    showToast('Custom URL saved successfully', 'success');
                 }
             } catch (error) {
-                alert(error.message);
+                showToast(error.message, 'error');
             }
         }
     });

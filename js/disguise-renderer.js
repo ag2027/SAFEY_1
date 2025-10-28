@@ -442,12 +442,7 @@ Notes:
         });
         
         menu.addEventListener('click', async () => {
-            if (confirm('Return to app? (Enter PIN)')) {
-                const pin = prompt('Enter PIN:');
-                if (pin && typeof unlockHandler !== 'undefined') {
-                    await unlockHandler.attemptUnlock(pin);
-                }
-            }
+            this.showReturnToAppModal();
         });
     }
 
@@ -476,6 +471,103 @@ Notes:
                 }, 500);
             }
         });
+    }
+
+    showReturnToAppModal() {
+        if (document.getElementById('disguise-exit-modal')) {
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'disguise-exit-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'disguise-exit-title');
+
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
+                <div class="mb-4">
+                    <h3 id="disguise-exit-title" class="text-lg font-bold text-gray-900">Return to SAFEY</h3>
+                    <p class="text-sm text-gray-600">Enter your stealth PIN to exit the disguise.</p>
+                </div>
+                <div class="space-y-3">
+                    <input id="disguise-exit-pin" type="password" inputmode="numeric" pattern="\\d*" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-trust-blue" placeholder="Enter PIN" aria-describedby="disguise-exit-error" autocomplete="one-time-code">
+                    <p id="disguise-exit-error" class="text-sm text-red-600 hidden">Incorrect PIN. Try again.</p>
+                </div>
+                <div class="flex gap-3 mt-5">
+                    <button id="disguise-exit-cancel" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition">Stay Hidden</button>
+                    <button id="disguise-exit-confirm" class="flex-1 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition">Unlock</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const pinInput = modal.querySelector('#disguise-exit-pin');
+        const errorText = modal.querySelector('#disguise-exit-error');
+        let isSubmitting = false;
+
+        const closeModal = () => {
+            document.removeEventListener('keydown', handleKeydown);
+            modal.remove();
+        };
+
+        const showError = (message) => {
+            errorText.textContent = message;
+            errorText.classList.remove('hidden');
+            pinInput.focus();
+            pinInput.select?.();
+        };
+
+        const attemptUnlock = async () => {
+            if (isSubmitting) {
+                return;
+            }
+
+            const pin = pinInput.value.trim();
+            const pinLength = stealthSettings.getSetting('pinLength') || 6;
+
+            if (!pin || pin.length !== pinLength) {
+                showError(`PIN must be ${pinLength} digits.`);
+                return;
+            }
+
+            isSubmitting = true;
+            const success = await unlockHandler.attemptUnlock(pin);
+            isSubmitting = false;
+
+            if (success) {
+                closeModal();
+            } else {
+                showError('Incorrect PIN. Try again.');
+                pinInput.value = '';
+            }
+        };
+
+        const handleKeydown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeModal();
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                attemptUnlock();
+            }
+        };
+
+        modal.querySelector('#disguise-exit-cancel').addEventListener('click', () => closeModal());
+        modal.querySelector('#disguise-exit-confirm').addEventListener('click', attemptUnlock);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+        pinInput.addEventListener('input', () => {
+            errorText.classList.add('hidden');
+        });
+
+        document.addEventListener('keydown', handleKeydown);
+        pinInput.focus();
     }
 
     // Event listeners for news
