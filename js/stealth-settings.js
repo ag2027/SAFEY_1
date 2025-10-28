@@ -87,6 +87,12 @@ class StealthSettings {
             await this.saveSettings();
         }
 
+        // Auto-enable debug mode in development
+        if (this.isDevelopmentMode() && !this.settings.debugMode) {
+            this.settings.debugMode = true;
+            await this.saveSettings();
+        }
+
         this.applyDebugLoggingPreference();
 
         return {
@@ -101,6 +107,13 @@ class StealthSettings {
         if (typeof safeyLogger !== 'undefined') {
             safeyLogger.setDebugEnabled(this.settings?.debugMode === true);
         }
+    }
+
+    // Check if running in development mode
+    isDevelopmentMode() {
+        return (window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1') &&
+               window.location.port === '5500';
     }
 
     // Load settings from storage
