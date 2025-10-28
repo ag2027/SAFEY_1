@@ -590,6 +590,20 @@ function displayResources(category = 'all') {
 
 
 // Emergency Mode - start
+// Helper function to sync silent mode toggles
+function syncSilentModeToggles() {
+    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
+    const silentModeToggle = document.getElementById('silent-mode-toggle');
+    const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
+    
+    if (silentModeToggle) {
+        silentModeToggle.checked = silentModeEnabled;
+    }
+    if (silentEmergencyEnabledCheckbox) {
+        silentEmergencyEnabledCheckbox.checked = silentModeEnabled;
+    }
+}
+
 // Show Emergency Mode Screen
 function showEmergencyMode() {
     trackEvent('emergency_mode');
@@ -597,11 +611,7 @@ function showEmergencyMode() {
     showScreen('emergency');
     
     // Sync the silent mode toggle with saved setting
-    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
-    const silentModeToggle = document.getElementById('silent-mode-toggle');
-    if (silentModeToggle) {
-        silentModeToggle.checked = silentModeEnabled;
-    }
+    syncSilentModeToggles();
     
     // Suspend background safety checks to avoid conflicting popups
     if (window.unlockHandler && unlockHandler.pauseSafetyChecks) {
@@ -783,11 +793,8 @@ async function init() {
         const enabled = e.target.checked;
         localStorage.setItem('safey_silent_emergency_enabled', enabled);
         
-        // Sync with the settings toggle if it exists
-        const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
-        if (silentEmergencyEnabledCheckbox) {
-            silentEmergencyEnabledCheckbox.checked = enabled;
-        }
+        // Sync with the settings toggle
+        syncSilentModeToggles();
         
         showToast(
             enabled ? 'Silent emergency mode enabled' : 'Silent emergency mode disabled',
@@ -796,8 +803,7 @@ async function init() {
     });
     
     // Load saved silent mode setting
-    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
-    silentModeToggle.checked = silentModeEnabled;
+    syncSilentModeToggles();
     
     // Triple-tap gesture listener for silent emergency mode
     let tapCount = 0;
@@ -1047,21 +1053,17 @@ function setupStealthSettingsListeners() {
             const enabled = e.target.checked;
             localStorage.setItem('safey_silent_emergency_enabled', enabled);
             
-            // Sync with the emergency screen toggle if it exists
-            const silentModeToggle = document.getElementById('silent-mode-toggle');
-            if (silentModeToggle) {
-                silentModeToggle.checked = enabled;
-            }
+            // Sync with the emergency screen toggle
+            syncSilentModeToggles();
             
             showToast(
-                enabled ? 'Silent emergency mode enabled in settings' : 'Silent emergency mode disabled in settings',
+                enabled ? 'Silent emergency mode enabled' : 'Silent emergency mode disabled',
                 'success'
             );
         });
         
         // Load current setting
-        const silentEmergencyEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
-        silentEmergencyEnabledCheckbox.checked = silentEmergencyEnabled;
+        syncSilentModeToggles();
     }
     // Emergency Mode - end
 }
