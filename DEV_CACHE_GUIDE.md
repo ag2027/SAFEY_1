@@ -22,12 +22,12 @@ If you're having caching issues during development:
 SAFEY automatically detects development environments by checking:
 
 - **Hostname**: `localhost` or `127.0.0.1`
-- **Port**: Any port other than `80` (HTTP) or `443` (HTTPS)
+- **Port**: Must be `5500` (VS Code Live Server default)
 
-This means it works with:
-- ✅ VS Code Live Server (typically `127.0.0.1:5500`)
-- ✅ Local Python/Node servers on any port
-- ✅ Any local development setup
+This means it ONLY works with:
+- ✅ VS Code Live Server on `127.0.0.1:5500` or `localhost:5500`
+- 🚫 Other local servers (Python, Node, etc.) will NOT trigger dev mode
+- 🚫 GitHub Pages and other hosting will NOT trigger dev mode
 
 When in development mode:
 - 🚫 Service worker caching is disabled
@@ -47,9 +47,9 @@ When deployed (not localhost):
 
 To test production caching locally, temporarily change:
 ```javascript
-const isDevelopment = window.location.hostname === 'localhost' ||
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.port !== '80' && window.location.port !== '443';
+const isDevelopment = (window.location.hostname === 'localhost' ||
+                     window.location.hostname === '127.0.0.1') &&
+                     window.location.port === '5500';
 ```
 to:
 ```javascript

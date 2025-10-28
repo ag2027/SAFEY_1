@@ -1,9 +1,9 @@
 // SAFEY - Safety Assessment and Resource Platform
 // All data is stored locally - nothing leaves the device
 // Development mode indicator
-const isDevelopment = window.location.hostname === 'localhost' ||
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.port !== '80' && window.location.port !== '443';
+const isDevelopment = (window.location.hostname === 'localhost' ||
+                     window.location.hostname === '127.0.0.1') &&
+                     window.location.port === '5500';
 
 if (isDevelopment) {
     console.log('🚀 SAFEY Development Mode - Caching disabled');

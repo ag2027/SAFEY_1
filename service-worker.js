@@ -3,9 +3,9 @@
 
 // Dynamic cache version for development cache-busting
 const CACHE_VERSION = 'safey-v1';
-const isDevelopment = self.location.hostname === 'localhost' ||
-                     self.location.hostname === '127.0.0.1' ||
-                     self.location.port !== '80' && self.location.port !== '443';
+const isDevelopment = (self.location.hostname === 'localhost' ||
+                     self.location.hostname === '127.0.0.1') &&
+                     self.location.port === '5500';
 const CACHE_NAME = CACHE_VERSION + (isDevelopment ? '-dev-' + Date.now() : '');
 
 const urlsToCache = [
