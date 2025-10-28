@@ -551,21 +551,20 @@ async function activateEmergencyMode() {
     trackEvent('emergency_mode');
     await eventLogger.logEvent('emergencyToggled');
     
-    if (confirm('This will show you emergency resources and hotlines. Continue?')) {
-        showScreen('resources');
-        displayResources('hotline');
-        
-        // Highlight emergency resources
-        setTimeout(() => {
-            const hotlineCategory = document.querySelector('[data-category="hotline"]');
-            if (hotlineCategory) {
-                hotlineCategory.click();
-            }
-        }, 100);
-        
-        // Check for suspicious patterns after emergency activation
-        await unlockHandler.checkSuspiciousPatterns();
-    }
+    // Auto-activate emergency mode - no blocking dialog during crisis
+    showScreen('resources');
+    displayResources('hotline');
+    
+    // Highlight emergency resources
+    setTimeout(() => {
+        const hotlineCategory = document.querySelector('[data-category="hotline"]');
+        if (hotlineCategory) {
+            hotlineCategory.click();
+        }
+    }, 100);
+    
+    // Check for suspicious patterns after emergency activation
+    await unlockHandler.checkSuspiciousPatterns();
 }
 
 // Settings Functions

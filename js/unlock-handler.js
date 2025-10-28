@@ -402,39 +402,43 @@ class UnlockHandler {
         // Determine UI styling based on risk level
         const riskConfig = this.getRiskConfig(riskLevel);
         
-        // Create slide-up card
+        // Create slide-up card with ARIA attributes
         const card = document.createElement('div');
         card.id = 'safety-check-card';
         card.className = 'fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl p-6 z-50 transform translate-y-full transition-transform duration-300';
+        card.setAttribute('role', 'alertdialog');
+        card.setAttribute('aria-modal', 'true');
+        card.setAttribute('aria-labelledby', 'safety-check-title');
+        card.setAttribute('aria-describedby', 'safety-check-description');
         
         const alertId = `alert_${Date.now()}`;
         
         card.innerHTML = `
             <div class="max-w-md mx-auto">
                 <div class="flex items-start gap-4 mb-4">
-                    <div class="w-12 h-12 ${riskConfig.bgColor} rounded-full flex items-center justify-center flex-shrink-0">
+                    <div class="w-12 h-12 ${riskConfig.bgColor} rounded-full flex items-center justify-center flex-shrink-0" aria-hidden="true">
                         <svg class="w-6 h-6 ${riskConfig.iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">${riskConfig.title}</h3>
-                        <p class="text-sm text-gray-600">${riskConfig.description}</p>
+                        <h3 id="safety-check-title" class="text-lg font-bold text-gray-900 mb-2">${riskConfig.title}</h3>
+                        <p id="safety-check-description" class="text-sm text-gray-600">${riskConfig.description}</p>
                         <p class="text-xs ${riskConfig.textColor} mt-2 font-medium">${reason}</p>
                         ${riskLevel === this.riskLevels.HIGH ? `
-                            <div id="auto-send-timer-${alertId}" class="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                            <div id="auto-send-timer-${alertId}" class="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg" role="status" aria-live="polite">
                                 <p class="text-xs text-red-800 font-medium">
-                                    ⏱️ Auto-sending in <span id="countdown-${alertId}">10</span>s... <button id="cancel-auto-${alertId}" class="underline">Cancel</button>
+                                    ⏱️ Auto-sending in <span id="countdown-${alertId}" aria-live="polite" aria-atomic="true">10</span>s... <button id="cancel-auto-${alertId}" class="underline" aria-label="Cancel automatic alert">Cancel</button>
                                 </p>
                             </div>
                         ` : ''}
                     </div>
                 </div>
                 <div class="flex gap-3">
-                    <button id="safety-check-cancel" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition">
+                    <button id="safety-check-cancel" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition" aria-label="${riskLevel === this.riskLevels.HIGH ? 'Dismiss safety alert' : 'Cancel safety check'}">
                         ${riskLevel === this.riskLevels.HIGH ? 'Dismiss' : 'Cancel'}
                     </button>
-                    <button id="safety-check-send" class="flex-1 ${riskConfig.buttonColor} hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-lg transition">
+                    <button id="safety-check-send" class="flex-1 ${riskConfig.buttonColor} hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-lg transition" aria-label="Send safety check to trusted contact">
                         Send Check Now
                     </button>
                 </div>
@@ -499,13 +503,62 @@ class UnlockHandler {
             }
         }
         
+        // Focus management - focus on primary action button
+        const sendButton = document.getElementById('safety-check-send');
+        setTimeout(() => sendButton?.focus(), 100);
+        
+        // Store original active element to restore focus on close
+        const previousActiveElement = document.activeElement;
+        
+        // Keyboard navigation handler
+        const handleKeyboard = (e) => {
+            // ESC to cancel/dismiss
+            if (e.key === 'Escape') {
+                document.getElementById('safety-check-cancel')?.click();
+                document.removeEventListener('keydown', handleKeyboard);
+            }
+            // Enter to send (if focused on buttons or card)
+            else if (e.key === 'Enter' && e.target.id !== 'safety-check-cancel') {
+                if (e.target.id === 'safety-check-send' || e.target.id === `cancel-auto-${alertId}`) {
+                    return; // Let default button click handle it
+                }
+                e.preventDefault();
+                document.getElementById('safety-check-send')?.click();
+                document.removeEventListener('keydown', handleKeyboard);
+            }
+            // Tab trap - keep focus within modal
+            else if (e.key === 'Tab') {
+                const focusableElements = card.querySelectorAll('button:not([disabled])');
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                
+                if (e.shiftKey && document.activeElement === firstElement) {
+                    e.preventDefault();
+                    lastElement.focus();
+                } else if (!e.shiftKey && document.activeElement === lastElement) {
+                    e.preventDefault();
+                    firstElement.focus();
+                }
+            }
+        };
+        document.addEventListener('keydown', handleKeyboard);
+        
         // Handle buttons
         return new Promise((resolve) => {
+            const cleanup = () => {
+                document.removeEventListener('keydown', handleKeyboard);
+                // Restore focus to previous element
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            };
+            
             document.getElementById('safety-check-cancel').addEventListener('click', () => {
                 if (autoSendTimer) {
                     clearInterval(autoSendTimer);
                     delete this.autoAlertTimers[alertId];
                 }
+                cleanup();
                 this.closeSafetyCheckCard(card);
                 resolve(false);
             });
@@ -515,6 +568,7 @@ class UnlockHandler {
                     clearInterval(autoSendTimer);
                     delete this.autoAlertTimers[alertId];
                 }
+                cleanup();
                 await this.sendSafetyCheck();
                 this.closeSafetyCheckCard(card);
                 resolve(true);
@@ -582,8 +636,76 @@ class UnlockHandler {
         // In a real implementation, this would call a configured webhook URL
         await eventLogger.logEvent('safetyCheckSent', payload);
         
-        // Show confirmation
-        alert('Safety check sent to your trusted contact (demo mode)');
+        // Show custom success modal instead of blocking alert
+        this.showSafetyCheckSuccessModal();
+    }
+
+    // Show success modal after sending safety check
+    showSafetyCheckSuccessModal() {
+        const modal = document.createElement('div');
+        modal.id = 'safety-success-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'success-title');
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full transform scale-95 transition-transform duration-200">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 id="success-title" class="text-lg font-bold text-gray-900 mb-2">✅ Safety Check Sent</h3>
+                        <p class="text-sm text-gray-600 mb-3">Your safety alert has been logged and will be sent to your trusted contact.</p>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                            <p class="text-xs text-blue-800 font-medium mb-1">📋 Next Steps:</p>
+                            <ul class="text-xs text-blue-700 space-y-1">
+                                <li>• Your trusted contact will be notified</li>
+                                <li>• Recent activity has been logged</li>
+                                <li>• You can continue using the app safely</li>
+                            </ul>
+                        </div>
+                        <p class="text-xs text-gray-500 italic">Demo mode: Configure webhook URL in production</p>
+                    </div>
+                </div>
+                <button id="success-close-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition">
+                    Continue
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.querySelector('.bg-white').classList.remove('scale-95');
+            modal.querySelector('.bg-white').classList.add('scale-100');
+        });
+        
+        // Focus the close button
+        setTimeout(() => {
+            document.getElementById('success-close-btn')?.focus();
+        }, 100);
+        
+        // Close handlers
+        const closeModal = () => {
+            modal.querySelector('.bg-white').classList.add('scale-95');
+            setTimeout(() => modal.remove(), 200);
+        };
+        
+        document.getElementById('success-close-btn').addEventListener('click', closeModal);
+        
+        // ESC key to close
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
     }
 
     // Helper: sleep
