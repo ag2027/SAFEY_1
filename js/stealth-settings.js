@@ -35,15 +35,41 @@ class StealthSettings {
     // Initialize settings
     async init() {
         await this.loadSettings();
+
+        let settingsChanged = false;
+
         if (!this.settings) {
             this.settings = { ...this.defaults };
-            await this.saveSettings();
+            settingsChanged = true;
+        } else {
+            // Merge defaults to ensure new keys are present while preserving user overrides
+            this.settings = { ...this.defaults, ...this.settings };
+            settingsChanged = true;
+        }
+
+        // Legacy migration: ensure pinLength exists
+        if (!Object.prototype.hasOwnProperty.call(this.settings, 'pinLength') || !this.settings.pinLength) {
+            // Assume legacy installs used 4-digit PIN unless pin length was explicitly set
+            this.settings.pinLength = this.settings.pinHash ? 4 : this.defaults.pinLength;
+            settingsChanged = true;
         }
         
-        // Ensure pin hash exists
+        // Legacy migration: hash plaintext PIN if still present
         if (this.settings.pin && !this.settings.pinHash) {
             this.settings.pinHash = await cryptoUtils.hashPin(this.settings.pin);
-            delete this.settings.pin; // Remove plain text pin
+            delete this.settings.pin; // Remove plain text PIN
+            settingsChanged = true;
+        }
+
+        // Ensure a PIN exists
+        if (!this.settings.pinHash) {
+            const desiredLength = this.settings.pinLength || this.defaults.pinLength;
+            const sequence = '1234567890';
+            const fallbackPin = sequence.slice(0, Math.max(4, Math.min(desiredLength, 8)));
+            await this.updatePin(fallbackPin);
+            console.log(`[SAFEY] Default PIN initialized (${desiredLength} digits)`);
+            settingsChanged = false; // updatePin already persisted settings
+        } else if (settingsChanged) {
             await this.saveSettings();
         }
     }
@@ -53,9 +79,27 @@ class StealthSettings {
         try {
             const encrypted = await storageUtils.loadData('settings', 'stealth');
             if (encrypted) {
-                this.settings = await cryptoUtils.decrypt(encrypted);
-                console.log('[SAFEY] Stealth settings loaded');
-                return this.settings;
+                let decrypted = await cryptoUtils.decrypt(encrypted);
+                
+                // Handle legacy plaintext JSON that was never encrypted
+                if (!decrypted && typeof encrypted === 'string') {
+                    try {
+                        decrypted = JSON.parse(encrypted);
+                        console.warn('[SAFEY] Migrating legacy stealth settings (plaintext storage)');
+                    } catch (parseError) {
+                        // Ignore parse failure - will trigger reset below
+                    }
+                }
+
+                if (decrypted) {
+                    this.settings = decrypted;
+                    console.log('[SAFEY] Stealth settings loaded');
+                    return this.settings;
+                }
+
+                console.warn('[SAFEY] Stealth settings corrupted. Resetting to defaults.');
+                await storageUtils.deleteData('settings', 'stealth');
+                this.settings = null;
             } else {
                 // Check localStorage for legacy settings
                 const legacyPin = localStorage.getItem('safey_pin');
@@ -67,6 +111,8 @@ class StealthSettings {
             }
         } catch (error) {
             console.error('Error loading stealth settings:', error);
+            await storageUtils.deleteData('settings', 'stealth');
+            this.settings = null;
         }
         return this.settings;
     }

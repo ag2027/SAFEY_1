@@ -20,9 +20,11 @@ class UnlockHandler {
         // Ensure default PIN exists
         const pinHash = stealthSettings.getSetting('pinHash');
         if (!pinHash) {
-            // Set default PIN: 1234
-            await stealthSettings.updatePin('1234');
-            console.log('[SAFEY] Default PIN set to 1234');
+            const pinLength = stealthSettings.getSetting('pinLength') || 6;
+            const sequence = '1234567890';
+            const defaultPin = sequence.slice(0, Math.max(4, Math.min(pinLength, 8)));
+            await stealthSettings.updatePin(defaultPin);
+            console.log(`[SAFEY] Default PIN set to ${defaultPin}`);
         }
     }
 

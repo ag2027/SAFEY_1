@@ -614,6 +614,18 @@ async function activateEmergencyMode() {
 function showSettings() {
     document.getElementById('settings-modal').classList.remove('hidden');
     document.getElementById('settings-modal').classList.add('flex');
+    
+    // Ensure unlock hint is properly set when modal opens
+    const currentTemplate = stealthSettings.getSetting('disguiseTemplate') || 'calculator';
+    const templateUnlockHint = document.getElementById('template-unlock-hint');
+    if (templateUnlockHint) {
+        if (currentTemplate === 'calculator') {
+            templateUnlockHint.textContent = '🔒 Secure (= three times) - Enter PIN then press = three times to unlock';
+            templateUnlockHint.classList.remove('hidden');
+        } else {
+            templateUnlockHint.classList.add('hidden');
+        }
+    }
 }
 
 function hideSettings() {
@@ -771,11 +783,13 @@ function setupStealthSettingsListeners() {
     
     // Function to update unlock hint based on template
     const updateUnlockHint = (template) => {
-        if (template === 'calculator') {
-            templateUnlockHint.textContent = '🔒 Secure (= three times) - Enter PIN then press = three times to unlock';
-            templateUnlockHint.classList.remove('hidden');
-        } else {
-            templateUnlockHint.classList.add('hidden');
+        if (templateUnlockHint) {
+            if (template === 'calculator') {
+                templateUnlockHint.textContent = '🔒 Secure (= three times) - Enter PIN then press = three times to unlock';
+                templateUnlockHint.classList.remove('hidden');
+            } else {
+                templateUnlockHint.classList.add('hidden');
+            }
         }
     };
     
@@ -812,6 +826,11 @@ function setupStealthSettingsListeners() {
     // Load current PIN length
     const currentPinLength = stealthSettings.getSetting('pinLength') || 6;
     pinLengthSelect.value = currentPinLength;
+    
+    // Load current template
+    const currentTemplate = stealthSettings.getSetting('disguiseTemplate') || 'calculator';
+    templateSelect.value = currentTemplate;
+    updateUnlockHint(currentTemplate);
     
     // Custom URL
     document.getElementById('save-custom-url').addEventListener('click', async () => {
