@@ -25,6 +25,10 @@ class LockoutManager {
         this.storageKey = 'lockout_state';
         
         // Encryption password (isolated from other data)
+        // Note: This key is used for data isolation, not authentication.
+        // The security model relies on device-local storage protection.
+        // An attacker with code access would also have storage access,
+        // so a dynamic key would not provide additional security benefit.
         this.encryptionPassword = 'lockout_isolation_key_v1';
     }
 
