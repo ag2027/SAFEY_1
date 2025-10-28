@@ -112,8 +112,7 @@ class UnlockHandler {
             // Reset failed attempts after triggering suspicious detection
             this.failedAttempts = [];
             
-            // Show safety check prompt
-            await this.promptSafetyCheck('Multiple failed unlock attempts detected');
+            // Pattern detection now handled by checkSuspiciousPatterns() method
         }
     }
 

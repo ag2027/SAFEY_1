@@ -191,44 +191,7 @@ function trackEvent(eventType) {
     // Save to localStorage
     localStorage.setItem('safey_events', JSON.stringify(AppState.checkInEvents));
     
-    // Check for concerning patterns
-    checkBehavioralPatterns();
-}
-
-function checkBehavioralPatterns() {
-    const now = Date.now();
-    const lastHour = now - (60 * 60 * 1000);
-    const recentEvents = AppState.checkInEvents.filter(e => e.timestamp > lastHour);
-    
-    // Pattern: Multiple emergency mode activations
-    const emergencyEvents = recentEvents.filter(e => e.type === 'emergency_mode');
-    if (emergencyEvents.length >= 3) {
-        promptSafetyCheck('Multiple emergency activations detected');
-        return;
-    }
-    
-    // Pattern: Extended inactivity after emergency
-    const lastEvent = AppState.checkInEvents[AppState.checkInEvents.length - 1];
-    if (lastEvent && lastEvent.type === 'emergency_mode') {
-        const timeSinceEmergency = now - lastEvent.timestamp;
-        if (timeSinceEmergency > 30 * 60 * 1000) { // 30 minutes
-            // Could prompt check-in, but we'll keep it passive for MVP
-        }
-    }
-}
-
-function promptSafetyCheck(reason) {
-    if (confirm(`${reason}. Would you like to send a safety check to a trusted contact?`)) {
-        sendSafetyCheck();
-    }
-}
-
-function sendSafetyCheck() {
-    // In production, this would send to a trusted contact
-    // For MVP, we log to console
-    console.log('Safety check sent at:', new Date().toISOString());
-    alert('Safety check would be sent to your trusted contact (demo mode)');
-    trackEvent('safety_check_sent');
+    // Pattern detection now handled by unlock-handler.js smart safety check system
 }
 
 // Screen Navigation
