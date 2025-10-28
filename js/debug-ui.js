@@ -57,9 +57,16 @@ class DebugUI {
                         ${queueStatus.queue.length > 0 ? `
                             <div class="mt-2 pt-2 border-t border-gray-700">
                                 <div class="text-gray-400 mb-1">Queued Alerts:</div>
-                                ${queueStatus.queue.map(alert => `
-                                    <div class="text-xs text-gray-500 truncate" title="${alert.reason}">${alert.reason}</div>
-                                `).join('')}
+                                ${queueStatus.queue.map(alert => {
+                                    const riskColor = alert.riskLevel === 'high' ? 'text-red-400' : 
+                                                     alert.riskLevel === 'medium' ? 'text-orange-400' : 'text-yellow-400';
+                                    const riskIcon = alert.riskLevel === 'high' ? '🔴' : 
+                                                    alert.riskLevel === 'medium' ? '🟡' : '🟢';
+                                    return `
+                                    <div class="text-xs ${riskColor} truncate" title="${alert.reason}">
+                                        ${riskIcon} ${alert.reason}
+                                    </div>
+                                `}).join('')}
                             </div>
                         ` : ''}
                     </div>
@@ -69,6 +76,7 @@ class DebugUI {
                     <h3 class="text-sm font-semibold text-gray-400 mb-2">Settings</h3>
                     <div class="bg-gray-800 rounded p-3 text-xs space-y-1">
                         <div>Auto-lock: <span class="font-mono text-blue-400">${debugInfo.settings?.autoLockTimeout || 5} min</span></div>
+                        <div>Auto-Alerts: <span class="font-mono ${debugInfo.settings?.autoAlertsEnabled !== false ? 'text-green-400' : 'text-yellow-400'}">${debugInfo.settings?.autoAlertsEnabled !== false ? 'ENABLED' : 'MANUAL ONLY'}</span></div>
                         <div>Logo Tap: <span class="font-mono ${debugInfo.settings?.triggersEnabled?.logoDoubleTap ? 'text-green-400' : 'text-red-400'}">${debugInfo.settings?.triggersEnabled?.logoDoubleTap ? 'ON' : 'OFF'}</span></div>
                         <div>Corner Tap: <span class="font-mono ${debugInfo.settings?.triggersEnabled?.cornerMultiTap ? 'text-green-400' : 'text-red-400'}">${debugInfo.settings?.triggersEnabled?.cornerMultiTap ? 'ON' : 'OFF'}</span></div>
                         <div>Corner: <span class="font-mono text-blue-400">${debugInfo.settings?.cornerTapConfig?.corner || 'top-right'}</span></div>

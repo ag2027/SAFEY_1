@@ -23,6 +23,7 @@ class StealthSettings {
             failedAttemptThreshold: 3,
             failedAttemptWindow: 2, // minutes
             suspiciousResetThreshold: 3,
+            autoAlertsEnabled: true, // Auto-send high-risk safety alerts after 10s
             debugMode: false,
             lastActivated: null,
             activationCount: 0

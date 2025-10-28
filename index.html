@@ -399,6 +399,32 @@
                 <hr class="border-gray-200">
 
                 <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Safety Alert Behavior</label>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <p class="text-xs text-blue-800 mb-2">
+                            <strong>Smart Safety Checks:</strong> The app monitors suspicious patterns (failed unlocks, repeated emergency toggles) and classifies them by risk level.
+                        </p>
+                        <p class="text-xs text-blue-700">
+                            🟢 Low Risk: Manual confirmation only<br>
+                            🟡 Medium Risk: Manual confirmation only<br>
+                            🔴 High Risk: Auto-sends after 10 seconds (unless disabled below)
+                        </p>
+                    </div>
+                    <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">Auto-Send High-Risk Alerts</span>
+                            <p class="text-xs text-gray-500 mt-0.5">Automatically send critical safety alerts after 10s</p>
+                        </div>
+                        <input type="checkbox" id="auto-alerts-enabled" checked class="rounded border-gray-300 text-trust-blue focus:ring-trust-blue">
+                    </label>
+                    <p class="text-xs text-gray-500 mt-2">
+                        💡 When disabled, all alerts require manual confirmation ("Manual Confirmation Only" mode)
+                    </p>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Debug Mode</label>
                     <button id="toggle-debug" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition text-sm">
                         Open Debug Panel (Ctrl+Shift+D)

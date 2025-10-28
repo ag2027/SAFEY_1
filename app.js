@@ -828,6 +828,20 @@ function setupStealthSettingsListeners() {
         document.getElementById('corner-taps').value = cornerConfig.tapCount || 4;
     }
     
+    // Auto-alerts toggle
+    document.getElementById('auto-alerts-enabled').addEventListener('change', async (e) => {
+        const enabled = e.target.checked;
+        stealthSettings.settings.autoAlertsEnabled = enabled;
+        await stealthSettings.saveSettings();
+        console.log(`[SAFEY] Auto-alerts ${enabled ? 'enabled' : 'disabled'}`);
+    });
+    
+    // Load current auto-alerts setting
+    const autoAlertsEnabled = stealthSettings.getSetting('autoAlertsEnabled');
+    if (autoAlertsEnabled !== undefined) {
+        document.getElementById('auto-alerts-enabled').checked = autoAlertsEnabled;
+    }
+    
     // Debug toggle
     document.getElementById('toggle-debug').addEventListener('click', () => {
         debugUI.toggle();

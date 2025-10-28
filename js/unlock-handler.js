@@ -9,6 +9,8 @@ class UnlockHandler {
         this.safetyQueue = []; // Queue for pending safety checks during stealth mode
         this.maxQueueSize = 5; // Prevent queue overflow
         this.isFlushingQueue = false; // Prevent concurrent queue flushing
+        this.autoAlertTimers = {}; // Track automatic alert timers for high-risk events
+        this.riskLevels = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
     }
 
     // Initialize
@@ -115,9 +117,10 @@ class UnlockHandler {
         }
     }
 
-    // Check for suspicious patterns
+    // Check for suspicious patterns with smart risk classification
     async checkSuspiciousPatterns() {
         const now = Date.now();
+        const patterns = [];
         
         // Pattern 1: Emergency mode toggled >2 times in 15 minutes
         const emergencyEvents = await eventLogger.getEventsByType('emergencyToggled');
@@ -126,13 +129,12 @@ class UnlockHandler {
         );
         
         if (recent15min.length > 2) {
-            console.log('[SAFEY] Suspicious: Multiple emergency toggles');
-            await eventLogger.logEvent('suspiciousDetected', {
-                reason: 'multipleEmergencyToggles',
-                count: recent15min.length
+            patterns.push({
+                type: 'multipleEmergencyToggles',
+                count: recent15min.length,
+                severity: recent15min.length >= 5 ? this.riskLevels.HIGH : this.riskLevels.MEDIUM,
+                message: `${recent15min.length} emergency mode activations in 15 minutes`
             });
-            await this.promptSafetyCheck('Multiple emergency mode activations detected');
-            return;
         }
         
         // Pattern 2: Failed unlock attempts >= 3 in 10 minutes
@@ -142,23 +144,21 @@ class UnlockHandler {
         );
         
         if (recent10min.length >= 3) {
-            console.log('[SAFEY] Suspicious: Multiple failed unlocks');
-            await eventLogger.logEvent('suspiciousDetected', {
-                reason: 'multipleFailedUnlocks',
-                count: recent10min.length
+            patterns.push({
+                type: 'multipleFailedUnlocks',
+                count: recent10min.length,
+                severity: recent10min.length >= 5 ? this.riskLevels.HIGH : this.riskLevels.MEDIUM,
+                message: `${recent10min.length} failed unlock attempts in 10 minutes`
             });
-            await this.promptSafetyCheck('Multiple failed unlock attempts detected');
-            return;
         }
         
-        // Pattern 3: Emergency mode with no activity (check last event age)
+        // Pattern 3: Emergency mode with no activity (prolonged inactivity)
         const lastEmergency = emergencyEvents[0];
         if (lastEmergency) {
             const timeSinceEmergency = now - lastEmergency.timestamp;
             const inactivityThreshold = 30 * 60 * 1000; // 30 minutes
             
             if (timeSinceEmergency > inactivityThreshold) {
-                // Get all events since emergency
                 const eventsSince = await eventLogger.getEventsInRange(
                     lastEmergency.timestamp,
                     now
@@ -166,18 +166,111 @@ class UnlockHandler {
                 
                 // If very few events, might indicate coercion
                 if (eventsSince.length < 3) {
-                    console.log('[SAFEY] Suspicious: Emergency mode with minimal activity');
-                    await eventLogger.logEvent('suspiciousDetected', {
-                        reason: 'emergencyNoActivity',
-                        timeSinceEmergency
+                    patterns.push({
+                        type: 'emergencyNoActivity',
+                        timeSinceEmergency: Math.floor(timeSinceEmergency / 60000),
+                        severity: this.riskLevels.HIGH,
+                        message: `${Math.floor(timeSinceEmergency / 60000)} minutes of inactivity after emergency mode`
                     });
                 }
             }
         }
+        
+        // Pattern 4: Rapid stealth activations (potential panic)
+        const stealthEvents = await eventLogger.getEventsByType('stealthActivated');
+        const recent5min = stealthEvents.filter(
+            e => now - e.timestamp < 5 * 60 * 1000
+        );
+        
+        if (recent5min.length >= 3) {
+            patterns.push({
+                type: 'rapidStealthActivations',
+                count: recent5min.length,
+                severity: this.riskLevels.MEDIUM,
+                message: `${recent5min.length} stealth mode activations in 5 minutes`
+            });
+        }
+        
+        // Pattern 5: Suspicious activity detected multiple times
+        const suspiciousEvents = await eventLogger.getEventsByType('suspiciousDetected');
+        const recentSuspicious = suspiciousEvents.filter(
+            e => now - e.timestamp < 30 * 60 * 1000
+        );
+        
+        if (recentSuspicious.length >= 2) {
+            patterns.push({
+                type: 'repeatedSuspiciousActivity',
+                count: recentSuspicious.length,
+                severity: this.riskLevels.HIGH,
+                message: `${recentSuspicious.length} suspicious patterns detected in 30 minutes`
+            });
+        }
+        
+        // Process detected patterns with smart safety check
+        if (patterns.length > 0) {
+            await this.smartSafetyCheck(patterns);
+        }
     }
 
-    // Prompt safety check
-    async promptSafetyCheck(reason) {
+    // Smart safety check with risk classification and auto-escalation
+    async smartSafetyCheck(patterns) {
+        // Calculate overall risk level
+        const riskLevel = this.calculateRiskLevel(patterns);
+        
+        // Build detailed message
+        const message = this.buildSafetyCheckMessage(patterns, riskLevel);
+        
+        // Log the aggregated suspicious activity
+        await eventLogger.logEvent('suspiciousDetected', {
+            patterns: patterns.map(p => ({
+                type: p.type,
+                severity: p.severity,
+                count: p.count
+            })),
+            riskLevel,
+            timestamp: Date.now()
+        });
+        
+        console.log(`[SAFEY] Smart safety check triggered - Risk Level: ${riskLevel.toUpperCase()}`);
+        
+        // Queue or show safety check based on stealth mode
+        await this.promptSafetyCheck(message, riskLevel);
+    }
+
+    // Calculate overall risk level from multiple patterns
+    calculateRiskLevel(patterns) {
+        const highCount = patterns.filter(p => p.severity === this.riskLevels.HIGH).length;
+        const mediumCount = patterns.filter(p => p.severity === this.riskLevels.MEDIUM).length;
+        
+        // High risk if any high-severity pattern or multiple medium patterns
+        if (highCount > 0 || mediumCount >= 2) {
+            return this.riskLevels.HIGH;
+        }
+        
+        // Medium risk if one medium-severity pattern
+        if (mediumCount > 0) {
+            return this.riskLevels.MEDIUM;
+        }
+        
+        // Otherwise low risk
+        return this.riskLevels.LOW;
+    }
+
+    // Build safety check message from patterns
+    buildSafetyCheckMessage(patterns, riskLevel) {
+        const urgencyPrefix = riskLevel === this.riskLevels.HIGH 
+            ? '⚠️ URGENT: ' 
+            : riskLevel === this.riskLevels.MEDIUM 
+            ? '⚡ ALERT: ' 
+            : '⚠️ NOTICE: ';
+        
+        const messages = patterns.map(p => p.message);
+        
+        return urgencyPrefix + messages.join(', ');
+    }
+
+    // Prompt safety check with risk level
+    async promptSafetyCheck(reason, riskLevel = this.riskLevels.LOW) {
         console.log(`[SAFEY] Safety check triggered: ${reason}`);
         
         // Check if stealth mode is active
@@ -185,17 +278,17 @@ class UnlockHandler {
         
         if (isStealthActive) {
             // Queue the alert instead of showing popup
-            await this.queueSafetyCheck(reason);
+            await this.queueSafetyCheck(reason, riskLevel);
             console.log('[SAFEY] Safety check queued (stealth mode active)');
             return false; // Queued, not shown
         } else {
             // Show popup immediately when not in stealth mode
-            return await this.showSafetyCheckPopup(reason);
+            return await this.showSafetyCheckPopup(reason, riskLevel);
         }
     }
 
     // Queue safety check for later (during stealth mode)
-    async queueSafetyCheck(reason) {
+    async queueSafetyCheck(reason, riskLevel = this.riskLevels.LOW) {
         // Prevent queue overflow
         if (this.safetyQueue.length >= this.maxQueueSize) {
             console.log('[SAFEY] Safety queue full, removing oldest alert');
@@ -204,6 +297,7 @@ class UnlockHandler {
         
         const alert = {
             reason,
+            riskLevel,
             timestamp: Date.now(),
             id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         };
@@ -213,6 +307,7 @@ class UnlockHandler {
         // Log to encrypted storage
         await eventLogger.logEvent('safetyCheckQueued', {
             reason,
+            riskLevel,
             queueSize: this.safetyQueue.length,
             timestamp: alert.timestamp
         });
@@ -220,7 +315,7 @@ class UnlockHandler {
         // Save queue to localStorage (encrypted)
         await this.saveSafetyQueue();
         
-        console.log(`[SAFEY] Safety check queued (${this.safetyQueue.length}/${this.maxQueueSize}): ${reason}`);
+        console.log(`[SAFEY] Safety check queued (${this.safetyQueue.length}/${this.maxQueueSize}) - Risk: ${riskLevel.toUpperCase()}: ${reason}`);
     }
 
     // Save safety queue to encrypted storage
@@ -282,9 +377,9 @@ class UnlockHandler {
         
         for (let i = 0; i < alerts.length; i++) {
             const alert = alerts[i];
-            console.log(`[SAFEY] Showing queued alert ${i + 1}/${alerts.length}: ${alert.reason}`);
+            console.log(`[SAFEY] Showing queued alert ${i + 1}/${alerts.length} - Risk: ${alert.riskLevel?.toUpperCase() || 'UNKNOWN'}: ${alert.reason}`);
             
-            await this.showSafetyCheckPopup(alert.reason);
+            await this.showSafetyCheckPopup(alert.reason, alert.riskLevel || this.riskLevels.LOW);
             
             // Wait 2 seconds before next alert (except for last one)
             if (i < alerts.length - 1) {
@@ -301,34 +396,47 @@ class UnlockHandler {
         });
     }
 
-    // Show safety check popup (extracted from promptSafetyCheck)
-    async showSafetyCheckPopup(reason) {
-        console.log(`[SAFEY] Prompting safety check: ${reason}`);
+    // Show safety check popup with risk level and auto-escalation
+    async showSafetyCheckPopup(reason, riskLevel = this.riskLevels.LOW) {
+        console.log(`[SAFEY] Prompting safety check - Risk: ${riskLevel.toUpperCase()}: ${reason}`);
+        
+        // Determine UI styling based on risk level
+        const riskConfig = this.getRiskConfig(riskLevel);
         
         // Create slide-up card
         const card = document.createElement('div');
         card.id = 'safety-check-card';
         card.className = 'fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl p-6 z-50 transform translate-y-full transition-transform duration-300';
+        
+        const alertId = `alert_${Date.now()}`;
+        
         card.innerHTML = `
             <div class="max-w-md mx-auto">
                 <div class="flex items-start gap-4 mb-4">
-                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 ${riskConfig.bgColor} rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 ${riskConfig.iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <h3 class="text-lg font-bold text-gray-900 mb-2">Safety Check</h3>
-                        <p class="text-sm text-gray-600">We detected something that might be unsafe. Would you like to send a safety check to a trusted contact?</p>
-                        <p class="text-xs text-gray-400 mt-1">${reason}</p>
+                        <h3 class="text-lg font-bold text-gray-900 mb-2">${riskConfig.title}</h3>
+                        <p class="text-sm text-gray-600">${riskConfig.description}</p>
+                        <p class="text-xs ${riskConfig.textColor} mt-2 font-medium">${reason}</p>
+                        ${riskLevel === this.riskLevels.HIGH ? `
+                            <div id="auto-send-timer-${alertId}" class="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                <p class="text-xs text-red-800 font-medium">
+                                    ⏱️ Auto-sending in <span id="countdown-${alertId}">10</span>s... <button id="cancel-auto-${alertId}" class="underline">Cancel</button>
+                                </p>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <button id="safety-check-cancel" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition">
-                        Cancel
+                        ${riskLevel === this.riskLevels.HIGH ? 'Dismiss' : 'Cancel'}
                     </button>
-                    <button id="safety-check-send" class="flex-1 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-lg transition">
-                        Send Check
+                    <button id="safety-check-send" class="flex-1 ${riskConfig.buttonColor} hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-lg transition">
+                        Send Check Now
                     </button>
                 </div>
             </div>
@@ -340,19 +448,113 @@ class UnlockHandler {
         await this.sleep(50);
         card.classList.remove('translate-y-full');
         
+        // Handle auto-escalation for high-risk alerts
+        let autoSendTimer = null;
+        let countdown = 10;
+        let autoSendCancelled = false;
+        
+        if (riskLevel === this.riskLevels.HIGH) {
+            // Check if auto-alerts are enabled
+            const autoAlertsEnabled = stealthSettings.getSetting('autoAlertsEnabled') !== false;
+            
+            if (autoAlertsEnabled) {
+                const countdownEl = document.getElementById(`countdown-${alertId}`);
+                const cancelBtn = document.getElementById(`cancel-auto-${alertId}`);
+                
+                // Cancel auto-send button
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        autoSendCancelled = true;
+                        clearInterval(autoSendTimer);
+                        const timerDiv = document.getElementById(`auto-send-timer-${alertId}`);
+                        if (timerDiv) {
+                            timerDiv.innerHTML = '<p class="text-xs text-gray-600">Auto-send cancelled</p>';
+                        }
+                        console.log('[SAFEY] Auto-send cancelled by user');
+                    });
+                }
+                
+                // Countdown timer
+                autoSendTimer = setInterval(() => {
+                    countdown--;
+                    if (countdownEl) {
+                        countdownEl.textContent = countdown;
+                    }
+                    
+                    if (countdown <= 0 && !autoSendCancelled) {
+                        clearInterval(autoSendTimer);
+                        console.log('[SAFEY] Auto-sending high-risk safety alert');
+                        this.sendSafetyCheck();
+                        this.closeSafetyCheckCard(card);
+                    }
+                }, 1000);
+                
+                // Store timer reference for cleanup
+                this.autoAlertTimers[alertId] = autoSendTimer;
+            } else {
+                // Auto-alerts disabled, hide timer
+                const timerDiv = document.getElementById(`auto-send-timer-${alertId}`);
+                if (timerDiv) {
+                    timerDiv.innerHTML = '<p class="text-xs text-gray-600">⚙️ Auto-send disabled (Manual confirmation only)</p>';
+                }
+            }
+        }
+        
         // Handle buttons
         return new Promise((resolve) => {
             document.getElementById('safety-check-cancel').addEventListener('click', () => {
+                if (autoSendTimer) {
+                    clearInterval(autoSendTimer);
+                    delete this.autoAlertTimers[alertId];
+                }
                 this.closeSafetyCheckCard(card);
                 resolve(false);
             });
             
             document.getElementById('safety-check-send').addEventListener('click', async () => {
+                if (autoSendTimer) {
+                    clearInterval(autoSendTimer);
+                    delete this.autoAlertTimers[alertId];
+                }
                 await this.sendSafetyCheck();
                 this.closeSafetyCheckCard(card);
                 resolve(true);
             });
         });
+    }
+
+    // Get risk configuration for UI styling
+    getRiskConfig(riskLevel) {
+        switch (riskLevel) {
+            case this.riskLevels.HIGH:
+                return {
+                    title: '🚨 URGENT Safety Check',
+                    description: 'Critical suspicious activity detected. An alert will be sent automatically unless cancelled.',
+                    bgColor: 'bg-red-100',
+                    iconColor: 'text-red-600',
+                    textColor: 'text-red-700',
+                    buttonColor: 'bg-red-600'
+                };
+            case this.riskLevels.MEDIUM:
+                return {
+                    title: '⚡ Safety Alert',
+                    description: 'Multiple concerning patterns detected. Consider sending a safety check to a trusted contact.',
+                    bgColor: 'bg-orange-100',
+                    iconColor: 'text-orange-600',
+                    textColor: 'text-orange-700',
+                    buttonColor: 'bg-orange-600'
+                };
+            case this.riskLevels.LOW:
+            default:
+                return {
+                    title: '⚠️ Safety Check',
+                    description: 'We detected something that might be unsafe. Would you like to send a safety check?',
+                    bgColor: 'bg-yellow-100',
+                    iconColor: 'text-yellow-600',
+                    textColor: 'text-yellow-700',
+                    buttonColor: 'bg-trust-blue'
+                };
+        }
     }
 
     // Close safety check card
