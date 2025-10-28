@@ -2,7 +2,7 @@
   "name": "SAFEY",
   "short_name": "SAFEY",
   "description": "Discreet domestic violence safety and resource platform",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#3C91E6",
   "theme_color": "#3C91E6",

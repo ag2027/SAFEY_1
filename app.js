@@ -1071,14 +1071,70 @@ function setupStealthSettingsListeners() {
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
+        // Determine the correct service worker path
+        // For GitHub Pages project sites, we need to include the base path
+        const getServiceWorkerPath = () => {
+            const pathname = window.location.pathname;
+            // If we're at a path like /SAFEY_1/, extract the base
+            const match = pathname.match(/^(\/[^\/]+)\//);
+            if (match && window.location.hostname.includes('github.io')) {
+                return match[1] + '/service-worker.js';
+            }
+            return '/service-worker.js';
+        };
+        
+        const swPath = getServiceWorkerPath();
+        
+        navigator.serviceWorker.register(swPath)
             .then((registration) => {
                 console.log('Service Worker registered:', registration.scope);
+                
+                // Check for updates periodically (every hour)
+                setInterval(() => {
+                    registration.update();
+                }, 60 * 60 * 1000);
+                
+                // Handle waiting service worker (update available)
+                if (registration.waiting) {
+                    handleWaitingServiceWorker(registration.waiting);
+                }
+                
+                // Listen for new service worker installing
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New service worker installed and waiting
+                            handleWaitingServiceWorker(newWorker);
+                        }
+                    });
+                });
+                
+                // Listen for controller change (new SW activated)
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    // Reload to use the new service worker
+                    window.location.reload();
+                });
             })
             .catch((error) => {
                 console.log('Service Worker registration failed:', error);
             });
     });
+}
+
+// Handle waiting service worker
+function handleWaitingServiceWorker(worker) {
+    // Notify user that an update is available
+    const shouldUpdate = confirm(
+        'A new version of SAFEY is available. Would you like to update now? ' +
+        'Click OK to update (the page will reload) or Cancel to update later.'
+    );
+    
+    if (shouldUpdate) {
+        // Tell the waiting service worker to skip waiting
+        worker.postMessage({ type: 'SKIP_WAITING' });
+    }
 }
 
 // Start the app when DOM is ready
