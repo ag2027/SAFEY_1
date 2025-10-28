@@ -30,13 +30,18 @@ class StealthSettings {
             activationCount: 0
         };
         this.settings = null;
+        this.flags = {
+            hadExistingSettings: false,
+            resetPerformed: false
+        };
     }
 
     // Initialize settings
     async init() {
-        await this.loadSettings();
+        const loadResult = await this.loadSettings();
 
         let settingsChanged = false;
+        let pinReset = false;
 
         if (!this.settings) {
             this.settings = { ...this.defaults };
@@ -49,8 +54,7 @@ class StealthSettings {
 
         // Legacy migration: ensure pinLength exists
         if (!Object.prototype.hasOwnProperty.call(this.settings, 'pinLength') || !this.settings.pinLength) {
-            // Assume legacy installs used 4-digit PIN unless pin length was explicitly set
-            this.settings.pinLength = this.settings.pinHash ? 4 : this.defaults.pinLength;
+            this.settings.pinLength = this.defaults.pinLength;
             settingsChanged = true;
         }
         
@@ -62,23 +66,44 @@ class StealthSettings {
         }
 
         // Ensure a PIN exists
-        if (!this.settings.pinHash) {
-            const desiredLength = this.settings.pinLength || this.defaults.pinLength;
+        const desiredLength = this.settings.pinLength || this.defaults.pinLength;
+        let forcePinRefresh = false;
+
+        if (desiredLength < this.defaults.pinLength) {
+            this.settings.pinLength = this.defaults.pinLength;
+            forcePinRefresh = true;
+            settingsChanged = true;
+        }
+
+        if (!this.settings.pinHash || forcePinRefresh) {
+            const length = this.settings.pinLength || this.defaults.pinLength;
             const sequence = '1234567890';
-            const fallbackPin = sequence.slice(0, Math.max(4, Math.min(desiredLength, 8)));
+            const fallbackPin = sequence.slice(0, Math.max(4, Math.min(length, 8)));
             await this.updatePin(fallbackPin);
-            console.log(`[SAFEY] Default PIN initialized (${desiredLength} digits)`);
+            console.log(`[SAFEY] Default PIN initialized (${length} digits)`);
+            pinReset = true;
             settingsChanged = false; // updatePin already persisted settings
         } else if (settingsChanged) {
             await this.saveSettings();
         }
+
+        return {
+            pinReset,
+            pinLength: this.settings.pinLength,
+            hadExistingSettings: this.flags.hadExistingSettings,
+            resetPerformed: this.flags.resetPerformed
+        };
     }
 
     // Load settings from storage
     async loadSettings() {
         try {
-            const encrypted = await storageUtils.loadData('settings', 'stealth');
+            let encrypted = await storageUtils.loadData('settings', 'stealth');
+            if (encrypted && typeof encrypted === 'object' && encrypted.value) {
+                encrypted = encrypted.value;
+            }
             if (encrypted) {
+                this.flags.hadExistingSettings = true;
                 let decrypted = await cryptoUtils.decrypt(encrypted);
                 
                 // Handle legacy plaintext JSON that was never encrypted
@@ -94,25 +119,30 @@ class StealthSettings {
                 if (decrypted) {
                     this.settings = decrypted;
                     console.log('[SAFEY] Stealth settings loaded');
+                    this.flags.resetPerformed = false;
                     return this.settings;
                 }
 
                 console.warn('[SAFEY] Stealth settings corrupted. Resetting to defaults.');
                 await storageUtils.deleteData('settings', 'stealth');
                 this.settings = null;
+                this.flags.resetPerformed = true;
             } else {
                 // Check localStorage for legacy settings
                 const legacyPin = localStorage.getItem('safey_pin');
                 if (legacyPin) {
+                    this.flags.hadExistingSettings = true;
                     this.settings = { ...this.defaults, pin: legacyPin };
                     await this.saveSettings();
                     localStorage.removeItem('safey_pin');
+                    this.flags.resetPerformed = false;
                 }
             }
         } catch (error) {
             console.error('Error loading stealth settings:', error);
             await storageUtils.deleteData('settings', 'stealth');
             this.settings = null;
+            this.flags.resetPerformed = true;
         }
         return this.settings;
     }
@@ -122,7 +152,7 @@ class StealthSettings {
         try {
             const encrypted = await cryptoUtils.encrypt(this.settings);
             if (encrypted) {
-                await storageUtils.saveData('settings', 'stealth', { value: encrypted });
+                await storageUtils.saveData('settings', 'stealth', encrypted);
                 console.log('[SAFEY] Stealth settings saved');
                 await eventLogger.logEvent('settingsUpdated', {
                     template: this.settings.disguiseTemplate

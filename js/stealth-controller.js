@@ -12,9 +12,13 @@ class StealthController {
     // Initialize stealth system
     async init() {
         // Initialize all components
-        await stealthSettings.init();
+        const initResult = await stealthSettings.init();
         await unlockHandler.init();
         await stealthTriggerHandler.init();
+
+        if (initResult?.pinReset && (initResult.hadExistingSettings || initResult.resetPerformed)) {
+            this.showPinResetModal(initResult.pinLength);
+        }
         
         // Load any queued safety checks from storage
         await unlockHandler.loadSafetyQueue();
@@ -272,6 +276,68 @@ class StealthController {
     // Update PIN
     async updatePin(newPin) {
         await stealthSettings.updatePin(newPin);
+    }
+
+    // Show PIN reset/confirmation modal
+    showPinResetModal(pinLength) {
+        const modal = document.createElement('div');
+        modal.id = 'pin-reset-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'pin-reset-title');
+
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full transform scale-95 transition-transform duration-200">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="w-12 h-12 bg-trust-blue bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-trust-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m2-4h.01M12 2a10 10 0 110 20 10 10 0 010-20z" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 id="pin-reset-title" class="text-lg font-bold text-gray-900 mb-2">Confirm Your Stealth PIN</h3>
+                        <p class="text-sm text-gray-600 mb-3">
+                            SAFEY detected legacy settings and refreshed your stealth PIN for security. Please set a trusted ${pinLength}-digit PIN now so only you can exit disguise mode.
+                        </p>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                            <p class="text-xs text-yellow-800 font-medium">Why this matters</p>
+                            <p class="text-xs text-yellow-700 mt-1">Legacy installations used shorter PINs that could be guessed quickly. We upgraded to a stronger PIN by default. Only you should know the new code.</p>
+                        </div>
+                        <p class="text-xs text-gray-500">Go to Settings → Stealth Mode PIN to create your secure ${pinLength}-digit code.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="pin-reset-open-settings" class="flex-1 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-3 px-4 rounded-lg transition">
+                        Open Settings
+                    </button>
+                    <button id="pin-reset-dismiss" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition">
+                        Later
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        requestAnimationFrame(() => {
+            const card = modal.querySelector('.bg-white');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        });
+
+        const dismiss = () => {
+            const card = modal.querySelector('.bg-white');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.remove(), 200);
+        };
+
+        document.getElementById('pin-reset-open-settings').addEventListener('click', () => {
+            dismiss();
+            showSettings();
+        });
+
+        document.getElementById('pin-reset-dismiss').addEventListener('click', dismiss);
     }
 
     // Clear all stealth data
