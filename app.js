@@ -496,15 +496,160 @@ function displaySafetyPlan() {
 }
 
 function exportSafetyPlan() {
-    const plan = AppState.safetyPlan || JSON.parse(localStorage.getItem('safey_plan') || '{}');
-    const text = JSON.stringify(plan, null, 2);
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'safety-plan.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+    // Merge stored plan with defaults so the export always has full content
+    const storedPlan = AppState.safetyPlan || (() => {
+        const raw = localStorage.getItem('safey_plan');
+        return raw ? JSON.parse(raw) : null;
+    })();
+    const defaultPlan = JSON.parse(JSON.stringify(safetyPlanTemplate));
+    const plan = Object.assign(defaultPlan, storedPlan || {});
+
+    const ensureArray = (value) => {
+        if (Array.isArray(value)) return value;
+        if (value === null || value === undefined || value === '') return [];
+        return [value];
+    };
+
+    // Helper: escape user-provided text for safe HTML insertion
+    const esc = (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/\n/g, '<br>');
+    };
+
+    const asLine = (item) => {
+        if (item === null || item === undefined) return '';
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object') {
+            const name = item.name || item.label || '';
+            const detail = item.phone || item.value || item.details || item.contact || '';
+            const note = item.notes || '';
+            const primary = [name, detail].filter(Boolean).join(': ');
+            if (primary && note) return `${primary} (${note})`;
+            return primary || note || '';
+        }
+        return String(item);
+    };
+
+    const listSection = (heading, items, options = {}) => {
+        const { numbered = false } = options;
+        const safeItems = ensureArray(items)
+            .map(asLine)
+            .map(item => item.trim())
+            .filter(item => item.length > 0);
+        if (!safeItems.length) return '';
+        const listTag = numbered ? 'ol' : 'ul';
+        const listStyle = numbered
+            ? 'margin:0;padding-left:22px;color:#374151;line-height:1.6;'
+            : 'margin:0;padding-left:18px;color:#374151;line-height:1.6;';
+        const itemsMarkup = safeItems
+            .map(item => `<li style="margin-bottom:6px">${esc(item)}</li>`)
+            .join('');
+        return `
+            <section style="padding:16px 24px; border-bottom:1px solid #f1f5f9;">
+                <h2 style="font-size:14px; margin:0 0 8px; color:#111827;">${esc(heading)}</h2>
+                <${listTag} style="${listStyle}">
+                    ${itemsMarkup}
+                </${listTag}>
+            </section>`;
+    };
+
+    const textSection = (heading, value) => {
+        if (value === null || value === undefined) return '';
+        const normalized = String(value).trim();
+        if (!normalized) return '';
+        return `
+            <section style="padding:16px 24px; border-bottom:1px solid #f1f5f9;">
+                <h2 style="font-size:14px; margin:0 0 8px; color:#111827;">${esc(heading)}</h2>
+                <div style="color:#374151; line-height:1.6;">${esc(normalized)}</div>
+            </section>`;
+    };
+
+    // Compose printable sections
+    const emergencyContacts = [
+        'National Domestic Violence Hotline: 1-800-799-7233',
+        'Emergency Services: 911',
+        ...ensureArray(plan.emergencyContacts)
+    ];
+
+    const title = 'Meeting Notes'; // innocuous filename hint for PDF exports
+    const createdAt = new Date().toLocaleString();
+    const header = `
+        <div style="font-family: system-ui, -apple-system, Arial, sans-serif; padding:24px;">
+            <h1 style="margin:0 0 8px; font-size:20px; color:#111827;">${esc(title)}</h1>
+            <div style="font-size:12px; color:#6b7280; margin-bottom:12px">Exported: ${esc(createdAt)}</div>
+        </div>`;
+
+    const html = `
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>${esc(title)}</title>
+            <style>
+                body { margin:0; background:#f8fafc; font-family: system-ui, -apple-system, Arial, sans-serif; }
+                .page { max-width:800px; margin:18px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+                header { border-bottom:1px solid #e6e9ee; }
+                h1,h2 { font-weight:600; }
+                @media print { body { background:#fff; } .page { box-shadow:none; border-radius:0; margin:0; } }
+            </style>
+        </head>
+        <body>
+            <div class="page">
+                <header>${header}</header>
+                ${listSection('Urgent Actions', plan.urgentActions)}
+                ${listSection('Emergency Contacts', emergencyContacts)}
+                ${listSection('Important Documents', plan.importantDocuments)}
+                ${listSection('Essential Items', plan.essentialItems)}
+                ${listSection('Safety Steps', plan.safetySteps, { numbered: true })}
+                ${textSection('Safe Place Plan', plan.safePlace)}
+                ${textSection('Additional Notes', plan.notes)}
+                <section style="padding:16px 24px; font-size:11px; color:#6b7280;">
+                    Keep this plan in a secure location and reach out to a trusted advocate if you feel unsafe.
+                </section>
+            </div>
+        </body>
+        </html>
+    `;
+
+    // Open printable view in a new window and trigger print. Many browsers will use document.title as default PDF filename.
+    try {
+        const win = window.open('', '_blank');
+        if (!win) throw new Error('popup-blocked');
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+        // Set title (suggested filename for Save as PDF)
+        try { win.document.title = title; } catch (e) {}
+        // Give the new window a moment to render then trigger print
+        setTimeout(() => {
+            try {
+                win.focus();
+                win.print();
+            } catch (err) {
+                console.warn('Print failed', err);
+            }
+            // Close the window after a short delay to avoid leaving extra tabs open
+            setTimeout(() => { try { win.close(); } catch (e) {} }, 800);
+        }, 350);
+    } catch (err) {
+        // Fallback: if popup blocked, offer a .txt download (previous behaviour)
+        const text = JSON.stringify(plan, null, 2);
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'notes_export.txt'; // innocuous fallback name
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     trackEvent('export_plan');
 }
 
