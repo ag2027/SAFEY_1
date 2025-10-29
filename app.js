@@ -71,6 +71,9 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
+// UI Utils
+//let uiUtils;
+
 // State Management
 const AppState = {
     currentScreen: 'home',
@@ -913,6 +916,9 @@ function setupStealthSettingsListeners() {
         if (templateUnlockHint) {
             if (template === 'calculator') {
                 templateUnlockHint.textContent = '🔒 Secure (= three times) - Enter PIN then press = three times to unlock';
+                templateUnlockHint.classList.remove('hidden');
+            } else if (template === 'notes') {
+                templateUnlockHint.textContent = '🔒 Secure (⋯ five times) - Press the three-dot menu five times to unlock';
                 templateUnlockHint.classList.remove('hidden');
             } else {
                 templateUnlockHint.classList.add('hidden');

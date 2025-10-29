@@ -1,5 +1,5 @@
 // Disguise template renderer
-// Renders different disguise UIs (Calculator, Notes, Weather, News, Gallery, Custom URL)
+// Renders different disguise UIs (Calculator, Notes, Weather, News, Custom URL)
 
 class DisguiseRenderer {
     constructor() {
@@ -21,7 +21,6 @@ class DisguiseRenderer {
             notes: 'Notes',
             weather: 'Weather',
             news: 'News Today',
-            gallery: 'Photos',
             custom: 'Browser'
         };
         document.title = titleMap[template] || 'App';
@@ -32,7 +31,7 @@ class DisguiseRenderer {
                 this.renderCalculator(container);
                 break;
             case 'notes':
-                this.renderNotes(container);
+                await this.renderNotes(container);
                 break;
             case 'weather':
                 this.renderWeather(container);
@@ -85,38 +84,77 @@ class DisguiseRenderer {
     }
 
     // Notes template (editable text area)
-    renderNotes(container) {
-        container.className = 'max-w-2xl mx-auto p-4 h-screen bg-white';
-        
-        // Create textarea separately to avoid XSS
-        const notesContent = this.getNotesContent();
-        
+    async renderNotes(container) {
+        container.className = 'max-w-2xl mx-auto h-screen px-4 py-4';
+
+        const currentNote = await decoyNotesManager.getCurrentNote();
+        const lastSaved = await decoyNotesManager.getLastSavedTimestamp();
+
         container.innerHTML = `
-            <div class="h-full flex flex-col">
-                <div class="bg-yellow-50 border-b border-yellow-200 p-3 flex items-center justify-between">
-                    <h1 class="text-xl font-semibold text-gray-800">My Notes</h1>
-                    <button id="notes-menu" class="p-2 hover:bg-yellow-100 rounded">
+            <div id="decoy-notes-root" class="h-full flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
+                <div id="decoy-notes-header" class="px-4 py-3 bg-yellow-50 border-b border-yellow-200 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-800">My Notes</h1>
+                        <div id="decoy-notes-last-saved" class="text-xs text-gray-500 mt-1">Not saved yet</div>
+                    </div>
+                    <button id="notes-menu" class="p-2 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-trust-blue" aria-haspopup="true" aria-label="Open notes menu">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                         </svg>
                     </button>
                 </div>
-                <textarea 
-                    id="notes-content" 
-                    class="flex-1 p-4 text-gray-800 resize-none focus:outline-none font-sans"
-                    placeholder="Start typing..."
-                    style="font-family: system-ui, -apple-system, sans-serif;"
-                ></textarea>
+                <div class="flex-1 flex">
+                    <textarea 
+                        id="notes-content"
+                        class="flex-1 p-5 text-gray-800 resize-none focus:outline-none font-sans"
+                        placeholder="Start typing..."
+                        spellcheck="true"
+                        autocomplete="off"
+                    ></textarea>
+                </div>
+                <div id="decoy-notes-status" class="px-4 py-2 bg-yellow-50 border-t border-yellow-200 flex items-center justify-between text-sm text-gray-600">
+                    <span id="decoy-notes-status-text">Autosave ready</span>
+                    <span id="notes-word-count">Word count: 0</span>
+                </div>
             </div>
         `;
-        
-        // Set value via textContent to prevent XSS
+
+        const root = container.querySelector('#decoy-notes-root');
+        const header = container.querySelector('#decoy-notes-header');
         const textarea = container.querySelector('#notes-content');
+        const statusBar = container.querySelector('#decoy-notes-status');
+        const statusText = container.querySelector('#decoy-notes-status-text');
+        const wordCountEl = container.querySelector('#notes-word-count');
+        const lastSavedEl = container.querySelector('#decoy-notes-last-saved');
+
         if (textarea) {
-            textarea.value = notesContent;
+            textarea.value = currentNote || '';
         }
-        
-        this.attachNotesListeners();
+
+        const appliedSettings = await decoyNotesManager.applySettingsToEditor({
+            container: root,
+            header,
+            textarea,
+            statusBar,
+            wordCountEl
+        });
+
+        decoyNotesManager.updateWordCountDisplay(textarea ? textarea.value : '', wordCountEl, appliedSettings);
+        decoyNotesManager.updateLastSavedDisplay(lastSaved, lastSavedEl);
+
+        if (statusText) {
+            statusText.textContent = lastSaved ? 'All changes synced' : 'Autosave ready';
+        }
+
+        this.attachNotesListeners({
+            root,
+            header,
+            textarea,
+            statusBar,
+            statusText,
+            wordCountEl,
+            lastSavedEl
+        });
     }
 
     // Weather template (static display)
@@ -262,27 +300,6 @@ class DisguiseRenderer {
         }
         
         this.attachCustomUrlListeners();
-    }
-
-    // Helper: Get notes content
-    getNotesContent() {
-        const saved = localStorage.getItem('safey_notes_content');
-        if (saved) return saved;
-        
-        return `Shopping List:
-- Milk
-- Bread
-- Eggs
-- Coffee
-
-Things to do:
-- Call dentist
-- Pick up dry cleaning
-- Plan weekend trip
-
-Notes:
-- Remember to check email
-- Meeting at 2 PM tomorrow`;
     }
 
     // Helper: Get news items
@@ -433,17 +450,112 @@ Notes:
     }
 
     // Event listeners for notes
-    attachNotesListeners() {
-        const content = document.getElementById('notes-content');
-        const menu = document.getElementById('notes-menu');
-        
-        content.addEventListener('input', (e) => {
-            localStorage.setItem('safey_notes_content', e.target.value);
+    attachNotesListeners({ textarea, statusText, lastSavedEl, wordCountEl, statusBar, root, header }) {
+        if (!textarea) {
+            return;
+        }
+
+        const menu = this.container.querySelector('#notes-menu');
+        const MENU_PRESS_WINDOW = 2000;
+        let menuPressCount = 0;
+        let menuPressTimer = null;
+
+        const handleAutoSaveStatus = async (state, savedAt) => {
+            if (!statusText) {
+                return;
+            }
+
+            if (state === 'pending') {
+                statusText.textContent = 'Saving...';
+                statusBar && statusBar.classList.add('animate-pulse');
+                return;
+            }
+
+            statusBar && statusBar.classList.remove('animate-pulse');
+
+            if (state === 'saved') {
+                statusText.textContent = 'All changes synced';
+                decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+            } else if (state === 'error') {
+                statusText.textContent = 'Auto-save failed';
+            }
+        };
+
+        textarea.addEventListener('input', () => {
+            decoyNotesManager.updateWordCountDisplay(textarea.value, wordCountEl);
+            decoyNotesManager.scheduleAutoSave(textarea.value, handleAutoSaveStatus);
         });
-        
-        menu.addEventListener('click', async () => {
-            this.showReturnToAppModal();
+
+        textarea.addEventListener('blur', async () => {
+            try {
+                const savedAt = await decoyNotesManager.saveCurrentNote(textarea.value);
+                statusText && (statusText.textContent = 'All changes synced');
+                decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+            } catch (error) {
+                console.error('[SAFEY] Failed to persist decoy note on blur:', error);
+                statusText && (statusText.textContent = 'Could not save changes');
+            }
         });
+
+        textarea.addEventListener('keydown', async (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                event.preventDefault();
+                const saved = await decoyNotesManager.saveNote(textarea.value);
+                if (saved && statusText) {
+                    statusText.textContent = 'Saved to library';
+                }
+                const savedAt = await decoyNotesManager.getLastSavedTimestamp();
+                decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+                event.preventDefault();
+                if (menu) {
+                    this.showNotesDecoyMenu({
+                        anchorElement: menu,
+                        textarea,
+                        statusTextEl: statusText,
+                        lastSavedEl,
+                        wordCountEl,
+                        statusBar,
+                        root,
+                        header,
+                        focusAction: 'search'
+                    });
+                }
+            }
+        });
+
+        if (menu) {
+            menu.addEventListener('click', (event) => {
+                event.stopPropagation();
+
+                menuPressCount += 1;
+                if (menuPressTimer) {
+                    clearTimeout(menuPressTimer);
+                }
+
+                if (menuPressCount === 3) {
+                    menuPressCount = 0;
+                    this.showReturnToAppModal();
+                    return;
+                }
+
+                this.showNotesDecoyMenu({
+                    anchorElement: menu,
+                    textarea,
+                    statusTextEl: statusText,
+                    lastSavedEl,
+                    wordCountEl,
+                    statusBar,
+                    root,
+                    header
+                });
+
+                menuPressTimer = setTimeout(() => {
+                    menuPressCount = 0;
+                }, MENU_PRESS_WINDOW);
+            });
+        }
     }
 
     // Event listeners for weather
@@ -568,6 +680,182 @@ Notes:
 
         document.addEventListener('keydown', handleKeydown);
         pinInput.focus();
+    }
+
+    // Show decoy menu for notes disguise
+    showNotesDecoyMenu({ anchorElement, textarea, statusTextEl, lastSavedEl, wordCountEl, statusBar, root, header, focusAction }) {
+        if (focusAction === 'search') {
+            decoyNotesManager.showSearchModal({
+                currentContent: textarea ? textarea.value : '',
+                onSelectNote: async (note) => {
+                    if (!textarea) {
+                        return;
+                    }
+                    textarea.value = note.content;
+                    decoyNotesManager.updateWordCountDisplay(note.content, wordCountEl);
+                    const savedAt = await decoyNotesManager.saveCurrentNote(note.content);
+                    statusTextEl && (statusTextEl.textContent = 'Loaded saved note');
+                    decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+                }
+            });
+            return;
+        }
+
+        const existingMenu = document.getElementById('notes-decoy-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+            return;
+        }
+
+        if (!anchorElement) {
+            return;
+        }
+
+        const menu = document.createElement('div');
+        menu.id = 'notes-decoy-menu';
+        menu.className = 'fixed inset-0 z-50';
+        menu.innerHTML = `
+            <div class="absolute inset-0 bg-black bg-opacity-30" data-dismiss="backdrop"></div>
+            <div class="absolute bg-white rounded-lg shadow-xl w-60 border border-gray-200" id="notes-menu-popup">
+                <div class="py-2">
+                    <button class="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition" data-action="save">
+                        <span class="text-sm text-gray-400">[Save]</span>
+                        <span>Save to library</span>
+                    </button>
+                    <button class="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition" data-action="search">
+                        <span class="text-sm text-gray-400">[Find]</span>
+                        <span>Search saved notes</span>
+                    </button>
+                    <button class="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition" data-action="share">
+                        <span class="text-sm text-gray-400">[Share]</span>
+                        <span>Share this note</span>
+                    </button>
+                    <button class="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition" data-action="settings">
+                        <span class="text-sm text-gray-400">[Prefs]</span>
+                        <span>Display settings</span>
+                    </button>
+                    <div class="border-t border-gray-200 my-1"></div>
+                    <button class="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition" data-action="new">
+                        <span class="text-sm text-gray-400">[New]</span>
+                        <span>Start a new note</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(menu);
+
+        const popup = menu.querySelector('#notes-menu-popup');
+        const anchorRect = anchorElement.getBoundingClientRect();
+        const computedTop = anchorRect.bottom + 8;
+        popup.style.top = `${computedTop}px`;
+        popup.style.right = `${Math.max(16, window.innerWidth - anchorRect.right)}px`;
+
+        const closeMenu = () => {
+            menu.remove();
+        };
+
+        menu.querySelector('[data-dismiss="backdrop"]').addEventListener('click', closeMenu);
+
+        const handleSaveToLibrary = async () => {
+            if (!textarea) {
+                return;
+            }
+            const saved = await decoyNotesManager.saveNote(textarea.value);
+            if (saved) {
+                statusTextEl && (statusTextEl.textContent = 'Saved to library');
+                const savedAt = await decoyNotesManager.getLastSavedTimestamp();
+                decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+            }
+        };
+
+        const handleSearch = () => {
+            decoyNotesManager.showSearchModal({
+                currentContent: textarea ? textarea.value : '',
+                onSelectNote: async (note) => {
+                    if (!textarea) {
+                        return;
+                    }
+                    textarea.value = note.content;
+                    decoyNotesManager.updateWordCountDisplay(note.content, wordCountEl);
+                    const savedAt = await decoyNotesManager.saveCurrentNote(note.content);
+                    statusTextEl && (statusTextEl.textContent = 'Loaded saved note');
+                    decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+                }
+            });
+        };
+
+        const handleShare = () => {
+            if (!textarea) {
+                return;
+            }
+            decoyNotesManager.showShareModal({
+                content: textarea.value,
+                title: decoyNotesManager.buildTitleFromContent(textarea.value)
+            });
+        };
+
+        const handleSettings = () => {
+            decoyNotesManager.showSettingsModal({
+                onApply: async (newSettings) => {
+                    await decoyNotesManager.applySettingsToEditor({
+                        container: root,
+                        header,
+                        textarea,
+                        statusBar,
+                        wordCountEl,
+                        settings: newSettings
+                    });
+                    decoyNotesManager.updateWordCountDisplay(textarea ? textarea.value : '', wordCountEl, newSettings);
+                }
+            });
+        };
+
+        const handleNewNote = () => {
+            if (!textarea) {
+                return;
+            }
+            const content = textarea.value.trim();
+            uiUtils.showConfirmModal({
+                title: 'Start a new note?',
+                message: content ? 'The current note will be saved to your library first.' : 'This will clear the editor.',
+                confirmText: 'Save and clear',
+                cancelText: 'Keep editing',
+                onConfirm: async () => {
+                    if (content) {
+                        await decoyNotesManager.saveNote(content);
+                    }
+                    textarea.value = '';
+                    const savedAt = await decoyNotesManager.saveCurrentNote('');
+                    decoyNotesManager.updateWordCountDisplay('', wordCountEl);
+                    decoyNotesManager.updateLastSavedDisplay(savedAt, lastSavedEl);
+                    statusTextEl && (statusTextEl.textContent = 'Ready for a new note');
+                }
+            });
+        };
+
+        menu.querySelectorAll('button[data-action]').forEach((button) => {
+            const action = button.getAttribute('data-action');
+            button.addEventListener('click', async () => {
+                closeMenu();
+                try {
+                    if (action === 'save') {
+                        await handleSaveToLibrary();
+                    } else if (action === 'search') {
+                        handleSearch();
+                    } else if (action === 'share') {
+                        handleShare();
+                    } else if (action === 'settings') {
+                        handleSettings();
+                    } else if (action === 'new') {
+                        handleNewNote();
+                    }
+                } catch (error) {
+                    console.error('[SAFEY] Notes menu action failed:', error);
+                    showToast('Action could not be completed. Try again.', 'error');
+                }
+            });
+        });
     }
 
     // Event listeners for news

@@ -4,7 +4,7 @@
 class StorageUtils {
     constructor() {
         this.dbName = 'SAFEY_DB';
-        this.dbVersion = 1;
+    this.dbVersion = 2;
         this.db = null;
         this.hasIndexedDB = 'indexedDB' in window;
         this.initDB();
@@ -46,6 +46,9 @@ class StorageUtils {
                 }
                 if (!db.objectStoreNames.contains('snapshots')) {
                     db.createObjectStore('snapshots', { keyPath: 'url' });
+                }
+                if (!db.objectStoreNames.contains('notes')) {
+                    db.createObjectStore('notes', { keyPath: 'key' });
                 }
             };
         });
@@ -171,7 +174,7 @@ class StorageUtils {
     // Clear all data
     async clearAll() {
         if (this.hasIndexedDB && this.db) {
-            const stores = ['settings', 'events', 'snapshots'];
+            const stores = ['settings', 'events', 'snapshots', 'notes'];
             for (const storeName of stores) {
                 await new Promise((resolve) => {
                     const transaction = this.db.transaction([storeName], 'readwrite');

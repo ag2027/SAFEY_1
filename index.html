@@ -80,6 +80,19 @@
         .material-shadow-lg {
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
         }
+        .animate-fade-in {
+            animation: slideDown 0.15s ease-out;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
         /* Emergency Mode - start */
         /* Slide-up animation for emergency screen */
         #emergency-screen.active {
@@ -406,8 +419,6 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">PIN Length</label>
                     <select id="pin-length-select" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Select PIN length">
-                        <option value="4">4 digits (Basic)</option>
-                        <option value="5">5 digits</option>
                         <option value="6" selected>6 digits (Recommended)</option>
                         <option value="7">7 digits</option>
                         <option value="8">8 digits (Maximum)</option>
@@ -428,7 +439,6 @@
                         <option value="notes">Notes</option>
                         <option value="weather">Weather</option>
                         <option value="news">News Feed</option>
-                        <option value="gallery">Gallery</option>
                         <option value="custom">Custom URL</option>
                     </select>
                     <p class="text-xs text-gray-500 mt-1.5">Choose how SAFEY appears in stealth mode</p>
@@ -566,7 +576,9 @@
     <script src="js/stealth-trigger-handler.js"></script>
     <script src="js/unlock-handler.js"></script>
     <script src="js/stealth-controller.js"></script>
+    <script src="js/decoy-notes-manager.js"></script>
     <script src="js/debug-ui.js"></script>
+    <script src="js/ui-utils.js"></script>
     
     <!-- Main App Script -->
     <script src="app.js"></script>

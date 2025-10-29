@@ -7,7 +7,7 @@ class StealthSettings {
             pin: null, // Will be hashed
             pinHash: null,
             pinLength: 6, // Configurable PIN length (4-8 digits), default 6 for better security
-            disguiseTemplate: 'calculator', // calculator, notes, weather, news, gallery, custom
+            disguiseTemplate: 'calculator', // calculator, notes, weather, news, custom
             customUrl: null,
             customUrlSnapshot: null,
             triggersEnabled: {
@@ -228,7 +228,7 @@ class StealthSettings {
 
     // Update disguise template
     async updateTemplate(template) {
-        const validTemplates = ['calculator', 'notes', 'weather', 'news', 'gallery', 'custom'];
+        const validTemplates = ['calculator', 'notes', 'weather', 'news', 'custom'];
         if (!validTemplates.includes(template)) {
             throw new Error('Invalid template');
         }
