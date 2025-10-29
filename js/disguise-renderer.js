@@ -87,7 +87,7 @@ class DisguiseRenderer {
     async renderNotes(container) {
         container.className = 'max-w-2xl mx-auto h-screen px-4 py-4';
 
-        const currentNote = await decoyNotesManager.getCurrentNote();
+        const currentNote = await decoyNotesManager.getCurrentNote() || 'Shopping List:\n- Milk\n- Bread\n- Eggs\n- Chicken\n- Apples\n- Coffee\n- Laundry Detergent\n- Toothpaste';
         const lastSaved = await decoyNotesManager.getLastSavedTimestamp();
 
         container.innerHTML = `
@@ -560,23 +560,20 @@ class DisguiseRenderer {
 
     // Event listeners for weather
     attachWeatherListeners() {
-        // Double-tap to unlock
+        // Double-tap to unlock using shared exit modal
         let tapCount = 0;
         let tapTimer = null;
-        
-        this.container.addEventListener('click', async () => {
+
+        this.container.addEventListener('click', () => {
             tapCount++;
-            
+
             if (tapTimer) {
                 clearTimeout(tapTimer);
             }
-            
+
             if (tapCount === 2) {
-                const pin = prompt('Enter PIN to unlock:');
-                if (pin && typeof unlockHandler !== 'undefined') {
-                    await unlockHandler.attemptUnlock(pin);
-                }
                 tapCount = 0;
+                this.showReturnToAppModal();
             } else {
                 tapTimer = setTimeout(() => {
                     tapCount = 0;
@@ -600,7 +597,7 @@ class DisguiseRenderer {
         modal.innerHTML = `
             <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
                 <div class="mb-4">
-                    <h3 id="disguise-exit-title" class="text-lg font-bold text-gray-900">Return to SAFEY</h3>
+                    <h3 id="disguise-exit-title" class="text-lg font-bold text-gray-900">Enter PIN</h3>
                     <p class="text-sm text-gray-600">Enter your stealth PIN to exit the disguise.</p>
                 </div>
                 <div class="space-y-3">
