@@ -5,6 +5,7 @@ class DisguiseRenderer {
     constructor() {
         this.currentTemplate = null;
         this.container = null;
+        this.fakeWeatherLocation = 'Seattle, WA';
     }
 
     // Render a disguise template
@@ -157,54 +158,383 @@ class DisguiseRenderer {
         });
     }
 
-    // Weather template (static display)
+    // Weather template (dynamic offline display)
     renderWeather(container) {
-        container.className = 'max-w-md mx-auto p-4 h-screen bg-gradient-to-b from-blue-400 to-blue-600 text-white';
+        const weather = this.generateWeatherData();
+        container.className = 'max-w-md mx-auto h-screen text-white flex flex-col';
+        container.style.background = weather.background;
         container.innerHTML = `
-            <div class="h-full flex flex-col">
-                <div class="text-center pt-8 pb-6">
-                    <div class="text-6xl mb-4">☀️</div>
-                    <div class="text-7xl font-light mb-2">72°</div>
-                    <div class="text-2xl mb-1">Sunny</div>
-                    <div class="text-lg opacity-80">San Francisco, CA</div>
+            <div class="flex flex-col h-full">
+                <div class="flex items-center justify-between text-[0.65rem] uppercase tracking-widest opacity-80 pt-4 px-5">
+                    <span>${weather.statusBar.time}</span>
+                    <span class="flex items-center gap-2">
+                        <span>5G</span>
+                        <span class="inline-block w-5 h-1.5 bg-white bg-opacity-80 rounded-full"></span>
+                        <span class="inline-block w-3 h-3 border border-white rounded-sm"></span>
+                    </span>
+                    <span>${weather.statusBar.battery}%</span>
                 </div>
-                <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
-                    <div class="grid grid-cols-3 gap-4 text-center">
-                        <div class="flex flex-col items-center">
-                            <div class="text-2xl mb-1">🌙</div>
-                            <div class="text-sm opacity-80">Tonight</div>
-                            <div class="text-xl font-semibold">58°</div>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="text-2xl mb-1">☀️</div>
-                            <div class="text-sm opacity-80">Tomorrow</div>
-                            <div class="text-xl font-semibold">75°</div>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="text-2xl mb-1">⛅</div>
-                            <div class="text-sm opacity-80">Wed</div>
-                            <div class="text-xl font-semibold">70°</div>
-                        </div>
-                    </div>
+                <div class="px-5 mt-4">
+                    <div class="text-sm opacity-80">${weather.location}</div>
+                    <div class="text-3xl font-semibold mt-1">${weather.timestamp}</div>
                 </div>
-                <div class="bg-white bg-opacity-20 rounded-lg p-4 space-y-2">
-                    <div class="flex justify-between">
-                        <span>Humidity</span>
-                        <span class="font-semibold">45%</span>
+                <div class="flex-1 overflow-y-auto mt-6 px-5 pb-6">
+                    <div class="bg-white bg-opacity-10 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center justify-between gap-6">
+                            <div>
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-6xl font-light">${weather.current.temp}°</span>
+                                    <span class="text-3xl">${weather.current.icon}</span>
+                                </div>
+                                <div class="text-lg font-semibold mt-2">${weather.current.condition}</div>
+                                <div class="text-sm opacity-80 mt-1">Feels like ${weather.current.feelsLike}° · High ${weather.current.high}° · Low ${weather.current.low}°</div>
+                            </div>
+                            <div class="text-right text-xs uppercase tracking-widest opacity-80 space-y-1">
+                                <div>${weather.sunrise}</div>
+                                <div>${weather.sunset}</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div class="flex justify-between bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <span>Humidity</span>
+                                <span class="font-semibold">${weather.details.humidity}%</span>
+                            </div>
+                            <div class="flex justify-between bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <span>Wind</span>
+                                <span class="font-semibold">${weather.details.wind}</span>
+                            </div>
+                            <div class="flex justify-between bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <span>UV Index</span>
+                                <span class="font-semibold">${weather.details.uv}</span>
+                            </div>
+                            <div class="flex justify-between bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <span>Air Quality</span>
+                                <span class="font-semibold">${weather.details.airQuality}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span>Wind</span>
-                        <span class="font-semibold">12 mph NW</span>
+
+                    <div class="mt-6">
+                        <div class="text-xs uppercase tracking-widest opacity-70 mb-3">Hourly Forecast</div>
+                        <div class="flex gap-4 overflow-x-auto pb-2">
+                            ${weather.hourly.map(hour => `
+                                <div class="flex-shrink-0 bg-white bg-opacity-10 rounded-xl px-3 py-3 text-center min-w-[64px]">
+                                    <div class="text-xs opacity-75">${hour.label}</div>
+                                    <div class="text-xl mt-1">${hour.icon}</div>
+                                    <div class="text-sm font-semibold mt-1">${hour.temp}°</div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span>UV Index</span>
-                        <span class="font-semibold">6 (High)</span>
+
+                    <div class="mt-6">
+                        <div class="text-xs uppercase tracking-widest opacity-70 mb-3">7-Day Outlook</div>
+                        <div class="space-y-3">
+                            ${weather.daily.map(day => `
+                                <div class="flex items-center justify-between bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm font-semibold">${day.day}</span>
+                                        <span class="text-lg">${day.icon}</span>
+                                        <span class="text-xs opacity-75">${day.summary}</span>
+                                    </div>
+                                    <div class="text-sm font-semibold text-right">
+                                        <span>${day.high}°</span>
+                                        <span class="opacity-70 ml-2">${day.low}°</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <div class="text-xs uppercase tracking-widest opacity-70 mb-3">More Details</div>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <div class="opacity-75 text-xs uppercase tracking-wide">Pressure</div>
+                                <div class="font-semibold mt-1">${weather.details.pressure} inHg</div>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <div class="opacity-75 text-xs uppercase tracking-wide">Visibility</div>
+                                <div class="font-semibold mt-1">${weather.details.visibility} mi</div>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <div class="opacity-75 text-xs uppercase tracking-wide">Dew Point</div>
+                                <div class="font-semibold mt-1">${weather.details.dewPoint}°</div>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-xl px-4 py-3">
+                                <div class="opacity-75 text-xs uppercase tracking-wide">Chance of Rain</div>
+                                <div class="font-semibold mt-1">${weather.details.precipitation}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${weather.alert ? `
+                        <div class="mt-6 bg-yellow-400 bg-opacity-20 border border-yellow-300 border-opacity-50 rounded-2xl px-4 py-3 text-sm text-yellow-100">
+                            <div class="font-semibold uppercase tracking-widest text-xs">${weather.alert.title}</div>
+                            <p class="mt-1 leading-snug">${weather.alert.description}</p>
+                        </div>
+                    ` : ''}
+
+                    <div class="mt-6 text-xs uppercase tracking-widest opacity-70 text-center">
+                        Updated ${weather.lastUpdated}
                     </div>
                 </div>
             </div>
         `;
-        
+
         this.attachWeatherListeners();
+    }
+
+    generateWeatherData() {
+        const now = new Date();
+        const seedBase = parseInt(`${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`, 10);
+        const scenario = this.getWeatherScenario(now.getHours(), seedBase);
+        const isNight = now.getHours() >= 20 || now.getHours() < 6;
+
+        const tempVariance = Math.round(this.getSeededRandom(seedBase + now.getHours()) * 6) - 3;
+        const currentTemp = scenario.baseTemp + tempVariance;
+
+        let highTemp = Math.round(currentTemp + 5 + this.getSeededRandom(seedBase + 7) * 3);
+        let lowTemp = Math.round(currentTemp - (6 + this.getSeededRandom(seedBase + 8) * 3));
+        if (highTemp - lowTemp < 4) {
+            highTemp = lowTemp + 4;
+        }
+
+        const feelsLike = Math.round(currentTemp + (this.getSeededRandom(seedBase + 9) * 4 - 2));
+
+        const hourly = this.buildHourlyForecast(now, currentTemp, scenario, seedBase);
+        const daily = this.buildDailyForecast(now, scenario, seedBase, highTemp, lowTemp);
+        const details = this.buildWeatherDetails(scenario, seedBase, currentTemp, now.getHours());
+        const sunrise = this.buildSunEvent('Sunrise', now, seedBase + 50, 6, 8);
+        const sunset = this.buildSunEvent('Sunset', now, seedBase + 60, 17, 19);
+        const alert = this.selectWeatherAlert(scenario, seedBase);
+
+        return {
+            location: this.fakeWeatherLocation,
+            timestamp: this.formatTimestamp(now),
+            statusBar: {
+                time: this.formatStatusClock(now),
+                battery: Math.min(100, Math.round(55 + this.getSeededRandom(seedBase + 70) * 40))
+            },
+            current: {
+                temp: currentTemp,
+                high: highTemp,
+                low: lowTemp,
+                condition: scenario.condition,
+                icon: isNight ? (scenario.nightIcon || scenario.icon) : scenario.icon,
+                feelsLike
+            },
+            hourly,
+            daily,
+            details,
+            sunrise,
+            sunset,
+            alert,
+            lastUpdated: 'just now',
+            background: isNight && scenario.nightGradient ? scenario.nightGradient : scenario.gradient
+        };
+    }
+
+    getWeatherScenario(hour, seed) {
+        const period = hour >= 5 && hour < 11 ? 'morning' : hour >= 11 && hour < 17 ? 'day' : hour >= 17 && hour < 21 ? 'evening' : 'night';
+        const scenarioSets = {
+            morning: [
+                { key: 'sunny', condition: 'Morning Sun', icon: '🌅', nightIcon: '🌙', baseTemp: 64, gradient: 'linear-gradient(180deg,#f6d365 0%,#fda085 100%)', nightGradient: 'linear-gradient(180deg,#2c3e50 0%,#4ca1af 100%)', summary: 'Bright start with mild temps' },
+                { key: 'cloudy', condition: 'Low Clouds', icon: '🌥️', nightIcon: '☁️', baseTemp: 60, gradient: 'linear-gradient(180deg,#bdc3c7 0%,#2c3e50 100%)', nightGradient: 'linear-gradient(180deg,#232526 0%,#414345 100%)', summary: 'Clouds thinning through the morning' }
+            ],
+            day: [
+                { key: 'sunny', condition: 'Mostly Sunny', icon: '🌤️', nightIcon: '🌙', baseTemp: 72, gradient: 'linear-gradient(180deg,#4facfe 0%,#00f2fe 100%)', nightGradient: 'linear-gradient(180deg,#141e30 0%,#243b55 100%)', summary: 'Bright and comfortable' },
+                { key: 'cloudy', condition: 'Partly Cloudy', icon: '⛅', nightIcon: '☁️', baseTemp: 68, gradient: 'linear-gradient(180deg,#757f9a 0%,#d7dde8 100%)', nightGradient: 'linear-gradient(180deg,#373b44 0%,#4286f4 100%)', summary: 'Mix of sun and clouds' },
+                { key: 'showers', condition: 'Passing Showers', icon: '🌦️', nightIcon: '🌧️', baseTemp: 65, gradient: 'linear-gradient(180deg,#3a6073 0%,#16222a 100%)', nightGradient: 'linear-gradient(180deg,#1f1c2c 0%,#928dab 100%)', summary: 'Light showers on and off' },
+                { key: 'windy', condition: 'Breezy', icon: '🌬️', nightIcon: '🌙', baseTemp: 66, gradient: 'linear-gradient(180deg,#56ccf2 0%,#2f80ed 100%)', nightGradient: 'linear-gradient(180deg,#373b44 0%,#4286f4 100%)', summary: 'Gusty winds with cooler air' }
+            ],
+            evening: [
+                { key: 'clear', condition: 'Clear Evening', icon: '🌆', nightIcon: '🌙', baseTemp: 67, gradient: 'linear-gradient(180deg,#0f2027 0%,#203a43 50%,#2c5364 100%)', nightGradient: 'linear-gradient(180deg,#000428 0%,#004e92 100%)', summary: 'Calm evening with thinning clouds' },
+                { key: 'fog', condition: 'Low Clouds', icon: '🌫️', nightIcon: '🌫️', baseTemp: 62, gradient: 'linear-gradient(180deg,#757f9a 0%,#d7dde8 100%)', nightGradient: 'linear-gradient(180deg,#232526 0%,#414345 100%)', summary: 'Marine layer drifting inland' },
+                { key: 'showers', condition: 'Light Rain', icon: '🌧️', nightIcon: '🌧️', baseTemp: 63, gradient: 'linear-gradient(180deg,#3a6073 0%,#16222a 100%)', nightGradient: 'linear-gradient(180deg,#1f1c2c 0%,#928dab 100%)', summary: 'Showers tapering late' }
+            ],
+            night: [
+                { key: 'clear', condition: 'Mostly Clear', icon: '🌙', nightIcon: '🌙', baseTemp: 58, gradient: 'linear-gradient(180deg,#141e30 0%,#243b55 100%)', nightGradient: 'linear-gradient(180deg,#000428 0%,#004e92 100%)', summary: 'Calm and cool overnight' },
+                { key: 'cloudy', condition: 'Cloudy Night', icon: '☁️', nightIcon: '☁️', baseTemp: 60, gradient: 'linear-gradient(180deg,#232526 0%,#414345 100%)', nightGradient: 'linear-gradient(180deg,#232526 0%,#414345 100%)', summary: 'Overcast with mild temps' },
+                { key: 'showers', condition: 'Overnight Showers', icon: '🌧️', nightIcon: '🌧️', baseTemp: 59, gradient: 'linear-gradient(180deg,#1f1c2c 0%,#928dab 100%)', nightGradient: 'linear-gradient(180deg,#1f1c2c 0%,#928dab 100%)', summary: 'Light rain with breezy winds' }
+            ]
+        };
+        const pool = scenarioSets[period] || scenarioSets.day;
+        const index = Math.floor(this.getSeededRandom(seed + hour) * pool.length) % pool.length;
+        return pool[index];
+    }
+
+    getSeededRandom(seed) {
+        const x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+    }
+
+    buildHourlyForecast(now, currentTemp, scenario, seedBase) {
+        return Array.from({ length: 8 }, (_, idx) => {
+            const hourDate = new Date(now.getTime() + idx * 60 * 60 * 1000);
+            const variance = Math.round(this.getSeededRandom(seedBase + idx * 11) * 6) - 3;
+            const temp = Math.round(currentTemp + variance);
+            const label = idx === 0 ? 'Now' : this.formatHourLabel(hourDate);
+            return {
+                label,
+                temp,
+                icon: this.getHourlyIcon(scenario, hourDate.getHours())
+            };
+        });
+    }
+
+    getHourlyIcon(scenario, hour) {
+        const isNight = hour >= 20 || hour < 6;
+        switch (scenario.key) {
+            case 'showers':
+                return isNight ? '🌧️' : '🌦️';
+            case 'fog':
+                return '🌫️';
+            case 'windy':
+                return isNight ? '🌙' : '🌬️';
+            case 'cloudy':
+                return isNight ? '☁️' : '⛅';
+            case 'clear':
+                return isNight ? '🌙' : '🌤️';
+            default:
+                return isNight ? (scenario.nightIcon || '🌙') : scenario.icon;
+        }
+    }
+
+    buildDailyForecast(now, scenario, seedBase, highTemp, lowTemp) {
+        return Array.from({ length: 7 }, (_, idx) => {
+            const dayDate = new Date(now.getTime() + idx * 24 * 60 * 60 * 1000);
+            const daySeed = seedBase + idx * 17;
+            const dayScenario = idx === 0 ? scenario : this.getWeatherScenario(12, daySeed);
+            let dayHigh = idx === 0 ? highTemp : Math.round(highTemp + this.getSeededRandom(daySeed) * 6 - 3);
+            let dayLow = idx === 0 ? lowTemp : Math.round(lowTemp + this.getSeededRandom(daySeed + 1) * 4 - 2);
+            if (dayHigh - dayLow < 4) {
+                dayHigh = dayLow + 4;
+            }
+            return {
+                day: idx === 0 ? 'Today' : this.formatDayLabel(dayDate),
+                high: dayHigh,
+                low: dayLow,
+                icon: this.getDailyIcon(dayScenario),
+                summary: this.getDailySummary(dayScenario)
+            };
+        });
+    }
+
+    getDailyIcon(scenario) {
+        switch (scenario.key) {
+            case 'showers':
+                return '🌧️';
+            case 'fog':
+                return '🌫️';
+            case 'windy':
+                return '🌬️';
+            case 'cloudy':
+                return '⛅';
+            case 'clear':
+                return '☀️';
+            default:
+                return '🌤️';
+        }
+    }
+
+    getDailySummary(scenario) {
+        return scenario.summary || 'Daytime conditions expected';
+    }
+
+    buildWeatherDetails(scenario, seedBase, temp, hour) {
+        const humidityBase = scenario.key === 'showers' ? 70 : scenario.key === 'fog' ? 85 : scenario.key === 'cloudy' ? 60 : 45;
+        const humidity = Math.min(96, Math.max(35, Math.round(humidityBase + this.getSeededRandom(seedBase + 20) * 12 - 6)));
+        const windDirections = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const windDirection = windDirections[Math.floor(this.getSeededRandom(seedBase + 21) * windDirections.length) % windDirections.length];
+        const windSpeedBase = scenario.key === 'windy' ? 14 : scenario.key === 'showers' ? 11 : 7;
+        const windSpeed = Math.round(windSpeedBase + this.getSeededRandom(seedBase + 22) * 6);
+        const isNight = hour >= 20 || hour < 6;
+        const uv = isNight ? '0' : Math.max(1, Math.round(this.getSeededRandom(seedBase + 23) * 8));
+        const aqi = Math.round(30 + this.getSeededRandom(seedBase + 24) * 70);
+        const airQuality = aqi <= 50 ? `Good (AQI ${aqi})` : aqi <= 100 ? `Moderate (AQI ${aqi})` : `Sensitive (AQI ${aqi})`;
+        const pressure = (29.7 + this.getSeededRandom(seedBase + 25) * 0.6).toFixed(2);
+        const visibility = scenario.key === 'fog' ? (3 + this.getSeededRandom(seedBase + 26) * 2).toFixed(1) : (8 + this.getSeededRandom(seedBase + 26) * 2).toFixed(1);
+        const dewPoint = Math.round(temp - (8 + this.getSeededRandom(seedBase + 27) * 4));
+        const precipitation = Math.min(100, Math.round((scenario.key === 'showers' ? 60 : scenario.key === 'fog' ? 45 : 15) + this.getSeededRandom(seedBase + 28) * 35));
+
+        return {
+            humidity,
+            wind: `${windDirection} ${windSpeed} mph`,
+            uv,
+            airQuality,
+            pressure,
+            visibility,
+            dewPoint,
+            precipitation
+        };
+    }
+
+    buildSunEvent(label, now, seed, startHour, endHour) {
+        const hourWindow = endHour - startHour;
+        const hourOffset = Math.floor(this.getSeededRandom(seed) * (hourWindow + 1));
+        const minute = Math.floor(this.getSeededRandom(seed + 1) * 60);
+        const eventDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour + hourOffset, minute);
+        return `${label}: ${this.formatClockTime(eventDate)}`;
+    }
+
+    selectWeatherAlert(scenario, seed) {
+        const library = {
+            showers: [
+                { title: 'Light Rain Advisory', description: 'Scattered showers expected through the evening. Roads may be slick in spots.' },
+                { title: 'Umbrella Check', description: 'Keep a light jacket handy. Passing showers continue into tonight.' }
+            ],
+            fog: [
+                { title: 'Low Visibility', description: 'Patchy fog develops after midnight. Allow extra time for the morning commute.' }
+            ],
+            windy: [
+                { title: 'Breezy Conditions', description: 'Gusts may reach 25 mph this afternoon. Secure lightweight outdoor items.' }
+            ],
+            default: [
+                { title: 'Planner Tip', description: 'Comfortable weather ahead. Great window for errands and outdoor plans.' }
+            ]
+        };
+
+        let chance = 0.15;
+        if (scenario.key === 'showers') {
+            chance = 0.45;
+        } else if (scenario.key === 'fog') {
+            chance = 0.35;
+        } else if (scenario.key === 'windy') {
+            chance = 0.3;
+        }
+
+        if (this.getSeededRandom(seed + 90) > chance) {
+            return null;
+        }
+
+        const pool = library[scenario.key] || library.default;
+        const index = Math.floor(this.getSeededRandom(seed + 91) * pool.length) % pool.length;
+        return pool[index];
+    }
+
+    formatTimestamp(date) {
+        const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+        const month = date.toLocaleDateString('en-US', { month: 'short' });
+        const dayNum = date.getDate();
+        const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        return `${day}, ${month} ${dayNum} - ${time}`;
+    }
+
+    formatStatusClock(date) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    formatClockTime(date) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    formatHourLabel(date) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric' });
+    }
+
+    formatDayLabel(date) {
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
     }
 
     // News template (scrollable cards)
