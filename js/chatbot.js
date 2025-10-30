@@ -1,4 +1,4 @@
-// SAFEY Chatbot - OpenAI Integration
+// SAFEY Chatbot - Groq Integration
 // Handles chat functionality with safety-focused responses
 
 class Chatbot {
@@ -25,16 +25,16 @@ Never store or transmit any private data.
     async init() {
         try {
             // Load encrypted API key from settings
-            const encryptedKey = await storageUtils.loadData('settings', 'openai_api_key');
+            const encryptedKey = await storageUtils.loadData('settings', 'groq_api_key');
             if (encryptedKey && encryptedKey.value) {
-                this.apiKey = await cryptoUtils.decrypt(encryptedKey.value, 'openai_key_salt');
+                this.apiKey = await cryptoUtils.decrypt(encryptedKey.value, 'groq_key_salt');
                 this.isInitialized = true;
                 console.log('[SAFEY] Chatbot initialized with stored API key');
             } else {
                 // Set default API key (encrypted and stored for security)
-                const defaultApiKey = 'sk-proj-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'; // Replace with actual OpenAI API key
-                const encrypted = await cryptoUtils.encrypt(defaultApiKey, 'openai_key_salt');
-                await storageUtils.saveData('settings', 'openai_api_key', { value: encrypted });
+                const defaultApiKey = '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'; // Replace with actual Groq API key
+                const encrypted = await cryptoUtils.encrypt(defaultApiKey, 'groq_key_salt');
+                await storageUtils.saveData('settings', 'groq_api_key', { value: encrypted });
                 this.apiKey = defaultApiKey;
                 this.isInitialized = true;
                 console.log('[SAFEY] Chatbot initialized with default API key');
@@ -74,8 +74,8 @@ Never store or transmit any private data.
     async setApiKey(apiKey) {
         try {
             // Encrypt and store the API key
-            const encrypted = await cryptoUtils.encrypt(apiKey, 'openai_key_salt');
-            await storageUtils.saveData('settings', 'openai_api_key', { value: encrypted });
+            const encrypted = await cryptoUtils.encrypt(apiKey, 'groq_key_salt');
+            await storageUtils.saveData('settings', 'groq_api_key', { value: encrypted });
             this.apiKey = apiKey;
             this.isInitialized = true;
             console.log('[SAFEY] API key updated successfully');
@@ -111,15 +111,15 @@ Never store or transmit any private data.
                 ...this.messages.slice(-10) // Keep last 10 messages for context
             ];
 
-            // Call OpenAI API
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            // Call Groq API
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'gpt-3.5-turbo',
+                    model: 'llama-3.1-8b-instant',
                     messages: apiMessages,
                     max_tokens: 150,
                     temperature: 0.7
