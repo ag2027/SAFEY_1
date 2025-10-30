@@ -22,16 +22,19 @@ Live app: https://ag2027.github.io/SAFEY_1/
 ## 2) Features
 
 - Mobile-first UI: responsive layout, large touch targets, smooth transitions
-- Risk Assessment: 8-question check with clear, on-device guidance — no network needed
+- Risk Assessment: 13-question check with clear, on-device guidance — no network needed
 - Personalized Safety Plan: editable, locally saved plan with quick export options
 - Resource Directory: categorized local/national resources (hotlines, shelters, legal, counseling)
-- Stealth Mode (Calculator): instant disguise to a calculator; unlock with PIN via calculator pattern
+- Stealth Mode: instant disguise the app from untrustworthy individuals; choose from calculator, notes, or weather templates; unlock with PIN (calculator pattern uses = three times)
 - Silent Emergency Trigger: triple-tap in a corner to queue a safety alert with no visible UI
 - Trusted Contacts: store up to 5 contacts and quickly open SMS/call with an auto-composed alert message
 - Smart Safety Checks: detects patterns (failed unlocks, repeated toggles) and classifies risk; includes optional 10s auto-send for high-risk alerts with cancel button
 - Queue & Resume: safety alerts triggered in stealth or while paused are queued and shown later for action
 - Lockout Protections: progressive lockouts on repeated failed PINs, with clear warnings
-- Offline-First: PWA installable and usable offline; all core features work without internet
+- Activation Triggers & Auto‑Lock: configurable corner multi‑tap to activate stealth; adjustable auto‑lock to stealth after inactivity
+- Emergency Mode Quick Actions: Call 911, Text trusted contact, and View nearby resources in one tap
+- Success Modal Actions: after sending safety checks, copy the alert message or tap to Text/Call each trusted contact
+- Offline-First: Progressive Web App (PWA) installable and usable offline; all core features except chatbot work without internet 
 - Privacy-First: all data stays on device; encrypted local storage for sensitive settings
 
 ## 3) Mobile Installation & Usage
@@ -45,7 +48,7 @@ Add to Home Screen (Install)
 
 Offline Use
 - SAFEY is a PWA that caches the interface so it works offline after first load/install
-- AI chatbot requires internet and may use a third‑party API; everything else works offline
+- AI chatbot requires internet and uses a third‑party API; everything else works offline
 - Even without the chatbot, SAFEY remains fully useful for assessment, plans, resources, and safety features
 
 Uninstalling
@@ -65,18 +68,27 @@ Uninstalling
   - `trusted-contacts.js` — encrypted trusted contacts and alert message templating
   - `event-logger.js` — local event logs and masked debug utilities
 
+Additional architecture details
+- Disguise Renderer supports calculator/notes/weather (with internal support for additional decoy templates)
+- Safety queue is encrypted and persisted locally; queued alerts flush when it’s safe to display
+- Trusted contact message template supports placeholders: `{{reason}}`, `{{risk}}`, `{{time}}`
+- GitHub Pages–aware service worker optimizes caching paths for project pages
+
 Architecture notes
 - 100% client‑side; no backend services
 - Modular JS with clear boundaries (settings, triggers, unlock, logging, UI helpers)
 - Mobile-optimized DOM and styles; ARIA-labelled dialogs and keyboard traps for accessibility
+
+We used modern AI-assisted coding tools (e.g., GitHub Copilot) to accelerate development and documentation while maintaining full human oversight.
+All safety logic, architecture, and design decisions were created and reviewed by us.
 
 ## 5) Privacy & Security
 
 - Local-only by design: no accounts, no analytics, no trackers
 - Sensitive settings (e.g., PIN, trusted contacts) are encrypted and stored locally
 - Safety actions (SMS/calls) open the device’s native apps via `sms:`/`tel:` links — nothing is auto‑sent
-- The optional AI chatbot clearly warns that messages go to a third‑party API; users can provide their own key
-- “Clear All Data” wipes settings, logs, and cached data; app reloads to a clean state without a default PIN
+- The AI chatbot goes to a third‑party API, Cerebras AI; we extensively checked their data privacy terms before applying it
+- “Clear All Data” wipes settings, logs, and cached data; app reloads to a clean state with a default PIN (123456)
 
 Note on Safety Checks (Demo vs Production)
 - In a real deployment, alerts could integrate with secure webhooks or trusted-contact APIs for automated outreach.
@@ -87,19 +99,19 @@ Note on Safety Checks (Demo vs Production)
 
 - Discreet Interaction Design: Creating reliable, low‑profile gestures (e.g., corner multi‑tap) that avoid accidental triggers while remaining fast under stress
 - Safety Without Servers: Implementing safety checks, queuing, and contact actions entirely on‑device while preserving privacy and auditability
+- Lockout Policy Design: Tiered lockouts (30s, 5m) with a critical level‑3 threshold (10 failed attempts) that triggers a clear data‑reset warning and supports full wipe routines
 
 ## 7) Future Plans
 
 - Broader language support and improved in‑app localization
-- Expanded accessibility (screen reader polish, color contrast, haptics where available)
+- Expanded accessibility (screen reader polish, color contrast, haptics where available, and alternate stealth trigger methods)
 - More configurable safety flows (timers, messages) while keeping everything private/on‑device
 
 ## 8) Demo & Credits
 
-- Demo video: [Add your video link here]
+- Demo video: 
 - Live app: https://ag2027.github.io/SAFEY_1/
-- Credits: Built by ag2027 and contributors
+- Credits: Built by Atiksh Gupta and Amrik Majumdar
 
 ---
 
-If you or someone you know is in immediate danger, call 911 (US) or your local emergency number. For confidential support in the US: National Domestic Violence Hotline 1‑800‑799‑7233, Crisis Text Line — text HOME to 741741.
