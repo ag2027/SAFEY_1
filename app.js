@@ -572,9 +572,122 @@ function hydrateSafetyPlan(rawPlan) {
     return plan;
 }
 
+const SAFETY_PLAN_SECURE_KEY = 'safety_plan';
+const SAFETY_PLAN_LOCAL_KEY = 'safey_plan';
+const SAFETY_PLAN_ENCRYPTED_KEY = 'safey_plan_encrypted';
+const SAFETY_PLAN_PERSIST_DELAY = 200;
+let safetyPlanPersistTimer = null;
+let lastSavedPlanSignature = null;
+
+function clonePlan(plan) {
+    try {
+        return JSON.parse(JSON.stringify(plan || {}));
+    } catch (error) {
+        console.error('Failed to clone safety plan', error);
+        return plan;
+    }
+}
+
+async function persistSafetyPlan(plan) {
+    try {
+        const payload = {
+            version: 1,
+            updatedAt: Date.now(),
+            data: plan
+        };
+        const encrypted = await cryptoUtils.encrypt(payload);
+        if (!encrypted) {
+            return;
+        }
+        await storageUtils.saveData('settings', SAFETY_PLAN_SECURE_KEY, encrypted);
+        localStorage.setItem(SAFETY_PLAN_ENCRYPTED_KEY, encrypted);
+    } catch (error) {
+        console.error('Error securely saving safety plan:', error);
+    }
+}
+
+function queueSafetyPlanPersist(plan) {
+    if (safetyPlanPersistTimer) {
+        clearTimeout(safetyPlanPersistTimer);
+    }
+    const snapshot = clonePlan(plan);
+    safetyPlanPersistTimer = setTimeout(() => {
+        safetyPlanPersistTimer = null;
+        persistSafetyPlan(snapshot);
+    }, SAFETY_PLAN_PERSIST_DELAY);
+}
+
+async function loadPersistedSafetyPlan() {
+    try {
+        let encrypted = await storageUtils.loadData('settings', SAFETY_PLAN_SECURE_KEY);
+        if (encrypted && typeof encrypted === 'object' && encrypted.value) {
+            encrypted = encrypted.value;
+        }
+        if (!encrypted) {
+            encrypted = localStorage.getItem(SAFETY_PLAN_ENCRYPTED_KEY);
+        }
+        if (encrypted) {
+            const decrypted = await cryptoUtils.decrypt(encrypted);
+            if (decrypted && typeof decrypted === 'object') {
+                const planData = decrypted.data || decrypted.plan || decrypted;
+                if (planData) {
+                    const hydrated = hydrateSafetyPlan(planData);
+                    localStorage.setItem(SAFETY_PLAN_LOCAL_KEY, JSON.stringify(hydrated));
+                    try {
+                        lastSavedPlanSignature = JSON.stringify(hydrated);
+                    } catch (error) {
+                        lastSavedPlanSignature = null;
+                    }
+                    return hydrated;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading encrypted safety plan:', error);
+    }
+
+    try {
+        const fallback = localStorage.getItem(SAFETY_PLAN_LOCAL_KEY);
+        if (fallback) {
+            const hydrated = hydrateSafetyPlan(JSON.parse(fallback));
+            try {
+                lastSavedPlanSignature = JSON.stringify(hydrated);
+            } catch (error) {
+                lastSavedPlanSignature = null;
+            }
+            return hydrated;
+        }
+    } catch (error) {
+        console.error('Error loading safety plan from localStorage:', error);
+    }
+
+    return null;
+}
+
 function saveSafetyPlan(plan) {
-    AppState.safetyPlan = plan;
-    localStorage.setItem('safey_plan', JSON.stringify(plan));
+    const safePlan = clonePlan(plan);
+    let serialized = null;
+    try {
+        serialized = JSON.stringify(safePlan);
+    } catch (error) {
+        console.error('Failed to serialize safety plan:', error);
+    }
+
+    AppState.safetyPlan = safePlan;
+
+    if (serialized && serialized === lastSavedPlanSignature) {
+        return;
+    }
+
+    if (serialized) {
+        lastSavedPlanSignature = serialized;
+        try {
+            localStorage.setItem(SAFETY_PLAN_LOCAL_KEY, serialized);
+        } catch (error) {
+            console.error('Error writing safety plan to localStorage:', error);
+        }
+        queueSafetyPlanPersist(safePlan);
+    }
 }
 
 function addUniquePlanItems(plan, sectionKey, items = [], options = {}) {
@@ -893,6 +1006,222 @@ function renderChecklistSection(meta, items = []) {
             ${renderResourceFooter(meta)}
         </section>
     `;
+}
+
+function getEditableSafetyPlan() {
+    return AppState.safetyPlan
+        ? clonePlan(AppState.safetyPlan)
+        : hydrateSafetyPlan({});
+}
+
+function handlePlanCheckboxChange(sectionKey, itemId, checked) {
+    const plan = getEditableSafetyPlan();
+    const items = Array.isArray(plan[sectionKey]) ? plan[sectionKey] : [];
+    const target = items.find(item => item.id === itemId);
+    if (!target) {
+        return;
+    }
+    target.checked = checked;
+    saveSafetyPlan(plan);
+    trackEvent(checked ? 'plan_item_checked' : 'plan_item_unchecked');
+    displaySafetyPlan();
+}
+
+function handlePlanItemRemoval(sectionKey, itemId) {
+    const plan = getEditableSafetyPlan();
+    const items = Array.isArray(plan[sectionKey]) ? plan[sectionKey] : [];
+    const index = items.findIndex(item => item.id === itemId);
+    if (index === -1) {
+        return;
+    }
+    items.splice(index, 1);
+    plan[sectionKey] = items;
+    saveSafetyPlan(plan);
+    trackEvent('plan_item_removed');
+    showToast('Item removed from your plan.', 'info', 2200);
+    displaySafetyPlan();
+}
+
+function handlePlanItemAddition(sectionKey, value) {
+    const normalized = (value || '').trim();
+    if (!normalized) {
+        showToast('Add a detail before submitting.', 'warning', 2200);
+        return false;
+    }
+
+    const plan = getEditableSafetyPlan();
+    if (!Array.isArray(plan[sectionKey])) {
+        plan[sectionKey] = [];
+    }
+
+    const duplicate = plan[sectionKey].some(item =>
+        item && typeof item.text === 'string' && item.text.toLowerCase() === normalized.toLowerCase()
+    );
+    if (duplicate) {
+        showToast('That item is already on your list.', 'warning', 2200);
+        return false;
+    }
+
+    const newItem = createPlanItem(sectionKey, normalized, {
+        source: 'custom'
+    });
+    if (!newItem) {
+        return false;
+    }
+
+    plan[sectionKey].push(newItem);
+    saveSafetyPlan(plan);
+    trackEvent('plan_item_added');
+    showToast('Added to your plan.', 'success', 2000);
+    displaySafetyPlan();
+    setTimeout(() => {
+        const container = document.getElementById('safety-plan-content');
+        if (!container) {
+            return;
+        }
+        const nextInput = container.querySelector(`form[data-plan-add="${sectionKey}"] [data-plan-add-input]`);
+        if (nextInput) {
+            nextInput.focus();
+        }
+    }, 60);
+    return true;
+}
+
+function handlePlanTextUpdate(key, value) {
+    const plan = getEditableSafetyPlan();
+    if (typeof value === 'string') {
+        plan[key] = value;
+        saveSafetyPlan(plan);
+        trackEvent('plan_text_updated');
+    }
+}
+
+function handlePlanContactAddition(value) {
+    const normalized = (value || '').trim();
+    if (!normalized) {
+        showToast('Enter a contact before adding.', 'warning', 2200);
+        return false;
+    }
+
+    const plan = getEditableSafetyPlan();
+    if (!Array.isArray(plan.emergencyContacts)) {
+        plan.emergencyContacts = [];
+    }
+
+    const exists = plan.emergencyContacts.some(contact =>
+        typeof contact === 'string' && contact.toLowerCase() === normalized.toLowerCase()
+    );
+    if (exists) {
+        showToast('That contact is already saved.', 'warning', 2200);
+        return false;
+    }
+
+    plan.emergencyContacts.push(normalized);
+    saveSafetyPlan(plan);
+    trackEvent('plan_contact_added');
+    showToast('Contact added.', 'success', 2000);
+    displaySafetyPlan();
+    setTimeout(() => {
+        const container = document.getElementById('safety-plan-content');
+        if (!container) {
+            return;
+        }
+        const nextInput = container.querySelector('[data-plan-contact-input]');
+        if (nextInput) {
+            nextInput.focus();
+        }
+    }, 60);
+    return true;
+}
+
+function handlePlanContactRemoval(index) {
+    const plan = getEditableSafetyPlan();
+    if (!Array.isArray(plan.emergencyContacts)) {
+        return;
+    }
+    const idx = Number(index);
+    if (Number.isNaN(idx) || idx < 0 || idx >= plan.emergencyContacts.length) {
+        return;
+    }
+    plan.emergencyContacts.splice(idx, 1);
+    saveSafetyPlan(plan);
+    trackEvent('plan_contact_removed');
+    showToast('Contact removed.', 'info', 2000);
+    displaySafetyPlan();
+}
+
+function setupSafetyPlanInteractions(container) {
+    container.querySelectorAll('[data-plan-checkbox]').forEach(checkbox => {
+        checkbox.addEventListener('change', (event) => {
+            const target = event.currentTarget;
+            const sectionKey = target.getAttribute('data-section');
+            const itemId = target.getAttribute('data-item-id');
+            handlePlanCheckboxChange(sectionKey, itemId, target.checked);
+        });
+    });
+
+    container.querySelectorAll('[data-plan-remove]').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const target = event.currentTarget;
+            const sectionKey = target.getAttribute('data-section');
+            const itemId = target.getAttribute('data-item-id');
+            handlePlanItemRemoval(sectionKey, itemId);
+        });
+    });
+
+    container.querySelectorAll('form[data-plan-add]').forEach(form => {
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const sectionKey = form.getAttribute('data-plan-add');
+            const input = form.querySelector('[data-plan-add-input]');
+            const value = input ? input.value : '';
+            const added = handlePlanItemAddition(sectionKey, value);
+            if (added && input) {
+                input.value = '';
+            }
+        });
+    });
+
+    const contactForm = container.querySelector('form[data-plan-add-contact]');
+    if (contactForm) {
+        contactForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const input = contactForm.querySelector('[data-plan-contact-input]');
+            const value = input ? input.value : '';
+            const added = handlePlanContactAddition(value);
+            if (added && input) {
+                input.value = '';
+            }
+        });
+    }
+
+    container.querySelectorAll('[data-plan-remove-contact]').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const index = event.currentTarget.getAttribute('data-plan-remove-contact');
+            handlePlanContactRemoval(index);
+        });
+    });
+
+    container.querySelectorAll('[data-plan-resource]').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const category = event.currentTarget.getAttribute('data-plan-resource');
+            if (category) {
+                trackEvent('plan_resource_shortcut');
+                showScreen('resources');
+                displayResources(category);
+            }
+        });
+    });
+
+    container.querySelectorAll('[data-plan-text]').forEach(textarea => {
+        textarea.addEventListener('change', (event) => {
+            const key = event.currentTarget.getAttribute('data-plan-text');
+            handlePlanTextUpdate(key, event.currentTarget.value);
+        });
+    });
 }
 
 function renderEmergencyContactsSection(plan) {
@@ -1353,8 +1682,13 @@ function displaySafetyPlan() {
     }
 
     const rawPlan = AppState.safetyPlan || (() => {
-        const stored = localStorage.getItem('safey_plan');
-        return stored ? JSON.parse(stored) : null;
+        try {
+            const stored = localStorage.getItem(SAFETY_PLAN_LOCAL_KEY);
+            return stored ? JSON.parse(stored) : null;
+        } catch (error) {
+            console.error('Error reading safety plan snapshot:', error);
+            return null;
+        }
     })();
 
     const plan = hydrateSafetyPlan(rawPlan);
@@ -1368,14 +1702,20 @@ function displaySafetyPlan() {
         .join('');
 
     container.innerHTML = `${renderPlanSummary(progress)}${renderPlanWarnings(warnings)}${sectionsHtml}`;
+    setupSafetyPlanInteractions(container, plan);
     trackEvent('view_safety_plan');
 }
 
 function exportSafetyPlan() {
     // Merge stored plan with defaults so the export always has full content
     const storedPlan = AppState.safetyPlan || (() => {
-        const raw = localStorage.getItem('safey_plan');
-        return raw ? JSON.parse(raw) : null;
+        try {
+            const raw = localStorage.getItem(SAFETY_PLAN_LOCAL_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+            console.error('Error reading stored safety plan for export:', error);
+            return null;
+        }
     })();
     const plan = hydrateSafetyPlan(storedPlan);
 
@@ -1531,22 +1871,22 @@ function exportSafetyPlan() {
         <body>
             <div class="page">
                 <header>${header}</header>
-                ${listSection('Urgent Actions', plan.urgentActions)}
+                ${listSection('Urgent Actions', plan.urgentActions, { checkable: true })}
                 ${listSection('Emergency Contacts', emergencyContacts)}
-                ${listSection('Communication Plan', plan.communicationPlan)}
-                ${listSection('Support Network', plan.supportNetwork)}
-                ${listSection('Important Documents', plan.importantDocuments)}
-                ${listSection('Essential Items', plan.essentialItems)}
-                ${listSection('Safety Steps', plan.safetySteps, { numbered: true })}
-                ${listSection('Technology Safety', plan.techSafety)}
-                ${listSection('Financial Safety', plan.financialSafety)}
-                ${listSection('Legal Preparation', plan.legalPreparation)}
-                ${listSection('Workplace Safety', plan.workplaceSafety)}
-                ${listSection('Weapon Safety', plan.weaponSafety)}
-                ${listSection('Child Safety', plan.childSafety)}
+                ${listSection('Communication Plan', plan.communicationPlan, { checkable: true })}
+                ${listSection('Support Network', plan.supportNetwork, { checkable: true })}
+                ${listSection('Important Documents', plan.importantDocuments, { checkable: true })}
+                ${listSection('Essential Items', plan.essentialItems, { checkable: true })}
+                ${listSection('Safety Steps', plan.safetySteps, { numbered: true, checkable: true })}
+                ${listSection('Technology Safety', plan.techSafety, { checkable: true })}
+                ${listSection('Financial Safety', plan.financialSafety, { checkable: true })}
+                ${listSection('Legal Preparation', plan.legalPreparation, { checkable: true })}
+                ${listSection('Workplace Safety', plan.workplaceSafety, { checkable: true })}
+                ${listSection('Weapon Safety', plan.weaponSafety, { checkable: true })}
+                ${listSection('Child Safety', plan.childSafety, { checkable: true })}
                 ${protocolSection(plan.scenarioProtocols)}
-                ${listSection('Self-Care & Recovery', plan.selfCare)}
-                ${listSection('Follow-Up Reminders', plan.followUpReminders)}
+                ${listSection('Self-Care & Recovery', plan.selfCare, { checkable: true })}
+                ${listSection('Follow-Up Reminders', plan.followUpReminders, { checkable: true })}
                 ${textSection('Safe Place Plan', plan.safePlace, 'Add details about where you can go quickly if you need to leave.')}
                 ${textSection('Additional Notes', plan.notes, 'Use this space for important details, license plates, schedules, or other reminders.')}
                 <section style="padding:16px 24px; font-size:11px; color:#6b7280;">
@@ -1796,6 +2136,13 @@ async function clearAllData() {
         AppState.riskScore = 0;
         AppState.safetyPlan = null;
         AppState.checkInEvents = [];
+        lastSavedPlanSignature = null;
+
+        try {
+            await storageUtils.deleteData('settings', SAFETY_PLAN_SECURE_KEY);
+        } catch (error) {
+            console.error('Failed to clear stored safety plan:', error);
+        }
         
         // Clear stealth data using new system
         await stealthController.clearAllData();
@@ -1827,10 +2174,10 @@ async function init() {
         AppState.checkInEvents = JSON.parse(savedEvents);
     }
     
-    // Load saved plan
-    const savedPlan = localStorage.getItem('safey_plan');
+    // Load saved plan with secure persistence
+    const savedPlan = await loadPersistedSafetyPlan();
     if (savedPlan) {
-        AppState.safetyPlan = JSON.parse(savedPlan);
+        AppState.safetyPlan = savedPlan;
     }
     
     // Event Listeners - Home Screen
