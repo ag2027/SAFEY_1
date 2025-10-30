@@ -872,7 +872,10 @@ async function clearAllData() {
 async function init() {
     // Initialize stealth system first
     await stealthController.init();
-    
+
+    // Initialize chatbot
+    await chatbot.init();
+
     // Enable debug keyboard shortcut
     debugUI.enableKeyboardShortcut();
     
@@ -898,14 +901,20 @@ async function init() {
         showScreen('resources');
         displayResources();
     });
+
     document.getElementById('emergency-btn').addEventListener('click', activateEmergencyMode);
-    
+
+    document.getElementById('chatbot-btn').addEventListener('click', () => {
+        showScreen('chatbot');
+    });
+
     // Stealth toggle now uses the new system
     document.getElementById('stealth-toggle').addEventListener('click', async () => {
         await stealthController.activate();
     });
-    
+
     document.getElementById('settings-btn').addEventListener('click', showSettings);
+    document.getElementById('settings-btn-grid').addEventListener('click', showSettings);
     
     // Event Listeners - Assessment Screen
     document.getElementById('assessment-back').addEventListener('click', () => showScreen('home'));
@@ -925,6 +934,8 @@ async function init() {
     
     // Event Listeners - Resources Screen
     document.getElementById('resources-back').addEventListener('click', () => showScreen('home'));
+
+
     
     // Emergency Mode - start
     // Event Listeners - Emergency Screen
@@ -1011,7 +1022,17 @@ async function init() {
     // Event Listeners - Settings Modal
     document.getElementById('close-settings').addEventListener('click', hideSettings);
     document.getElementById('clear-data').addEventListener('click', clearAllData);
-    
+
+    // Event Listeners - Chatbot Screen
+    document.getElementById('chatbot-back').addEventListener('click', () => showScreen('home'));
+    document.getElementById('send-message').addEventListener('click', sendChatMessage);
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+    document.getElementById('save-api-key').addEventListener('click', saveApiKey);
+
     // New stealth settings listeners
     setupStealthSettingsListeners();
     
@@ -1286,6 +1307,86 @@ function handleWaitingServiceWorker(worker) {
     if (shouldUpdate) {
         // Tell the waiting service worker to skip waiting
         worker.postMessage({ type: 'SKIP_WAITING' });
+    }
+}
+
+// Chatbot Functions
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    if (!chatbot.isReady()) {
+        showToast('Chatbot not ready. Please set API key in settings.', 'error');
+        return;
+    }
+
+    // Add user message to UI
+    addChatMessage('user', message);
+
+    // Clear input
+    input.value = '';
+
+    // Show loading
+    const loadingId = addChatMessage('assistant', 'Thinking...', true);
+
+    try {
+        const response = await chatbot.sendMessage(message);
+        // Remove loading message
+        removeChatMessage(loadingId);
+        // Add actual response
+        addChatMessage('assistant', response);
+    } catch (error) {
+        removeChatMessage(loadingId);
+        addChatMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+        console.error('Chat error:', error);
+    }
+}
+
+function addChatMessage(role, content, isLoading = false) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return null;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${role} ${isLoading ? 'loading' : ''}`;
+    messageDiv.innerHTML = `
+        <div class="message-content">${content}</div>
+        <div class="message-time">${new Date().toLocaleTimeString()}</div>
+    `;
+
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+
+    return messageDiv; // Return for removal if loading
+}
+
+function removeChatMessage(element) {
+    if (element && element.parentNode) {
+        element.parentNode.removeChild(element);
+    }
+}
+
+async function saveApiKey() {
+    const input = document.getElementById('groq-api-key');
+    const apiKey = input.value.trim();
+
+    if (!apiKey) {
+        showToast('Please enter a Groq API key', 'error');
+        return;
+    }
+
+    try {
+        const success = await chatbot.setApiKey(apiKey);
+        if (success) {
+            input.value = '';
+            showToast('Groq API key saved successfully', 'success');
+        } else {
+            showToast('Failed to save Groq API key', 'error');
+        }
+    } catch (error) {
+        showToast('Error saving Groq API key', 'error');
+        console.error('Groq API key save error:', error);
     }
 }
 
