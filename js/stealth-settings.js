@@ -99,13 +99,21 @@ class StealthSettings {
         }
 
         if (!this.settings.pinHash || forcePinRefresh) {
-            const length = this.settings.pinLength || this.defaults.pinLength;
-            const sequence = '1234567890';
-            const fallbackPin = sequence.slice(0, Math.max(4, Math.min(length, 8)));
-            await this.updatePin(fallbackPin);
-            console.log(`[SAFEY] Default PIN initialized (${length} digits)`);
-            pinReset = true;
-            settingsChanged = false; // updatePin already persisted settings
+            // Only create default PIN if user had existing settings (not a fresh start)
+            if (this.flags.hadExistingSettings) {
+                const length = this.settings.pinLength || this.defaults.pinLength;
+                const sequence = '1234567890';
+                const fallbackPin = sequence.slice(0, Math.max(4, Math.min(length, 8)));
+                await this.updatePin(fallbackPin);
+                console.log(`[SAFEY] Default PIN initialized (${length} digits)`);
+                pinReset = true;
+                settingsChanged = false; // updatePin already persisted settings
+            } else {
+                console.log('[SAFEY] Fresh start - no default PIN created');
+                if (settingsChanged) {
+                    await this.saveSettings();
+                }
+            }
         } else if (settingsChanged) {
             await this.saveSettings();
         }

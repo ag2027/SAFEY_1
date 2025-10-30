@@ -2373,9 +2373,8 @@ async function clearAllData() {
         // Clear stealth data using new system
         await stealthController.clearAllData();
         
-        hideSettings();
-        showScreen('home');
-        showToast('All data cleared', 'success', 4000);
+        // Reload the page to ensure clean state
+        window.location.reload();
     }
 }
 
@@ -2390,9 +2389,6 @@ async function init() {
 
     // Initialize inline chatbot after chatbot is ready
     initializeInlineChatbot();
-
-    // Enable debug keyboard shortcut
-    debugUI.enableKeyboardShortcut();
     
     // Load saved events
     const savedEvents = localStorage.getItem('safey_events');
@@ -2814,11 +2810,6 @@ function setupStealthSettingsListeners() {
             templateTextarea.value = trustedContactsManager.getMessageTemplate();
         };
     }
-    
-    // Debug toggle
-    document.getElementById('toggle-debug').addEventListener('click', () => {
-        debugUI.toggle();
-    });
     
     // Emergency Mode - start
     // Silent emergency toggle in settings
