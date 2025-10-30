@@ -251,36 +251,766 @@ const resources = [
     }
 ];
 
-// Safety Plan Template
-const safetyPlanTemplate = {
-    emergencyContacts: [],
-    safePlace: "",
-    importantDocuments: [
-        "ID/Driver's License",
-        "Birth certificates",
-        "Social Security cards",
-        "Bank account information",
-        "Insurance documents",
-        "Medical records",
-        "School records for children"
-    ],
-    essentialItems: [
-        "Medications",
-        "Keys (house, car)",
-        "Phone and charger",
-        "Money/credit cards",
-        "Change of clothes",
-        "Important phone numbers"
-    ],
-    safetySteps: [
-        "Identify safe areas in your home",
-        "Plan escape routes",
-        "Pack an emergency bag",
-        "Establish a code word with trusted contacts",
-        "Keep important documents ready",
-        "Save emergency numbers in phone"
-    ]
+// Safety Plan Utilities and Template
+const RESOURCE_LABELS = {
+    hotline: 'Hotlines',
+    shelter: 'Shelters',
+    legal: 'Legal Aid',
+    counseling: 'Counseling'
 };
+
+function generatePlanItemId(sectionKey) {
+    try {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return `${sectionKey}-${crypto.randomUUID()}`;
+        }
+        if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+            return `${sectionKey}-${window.crypto.randomUUID()}`;
+        }
+    } catch (err) {
+        // Ignore and fall back to timestamp-based id
+    }
+    return `${sectionKey}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function createPlanItem(sectionKey, text, options = {}) {
+    const normalized = typeof text === 'string' ? text.trim() : '';
+    if (!normalized) {
+        return null;
+    }
+    return {
+        id: options.id || generatePlanItemId(sectionKey),
+        text: normalized,
+        checked: Boolean(options.checked),
+        source: options.source || 'template',
+        priority: options.priority || 'standard'
+    };
+}
+
+function createPlanItems(sectionKey, texts = [], options = {}) {
+    const { source = 'template', priority, checked = false, idPrefix = 'base' } = options;
+    return texts
+        .map((text, index) => createPlanItem(sectionKey, text, {
+            source,
+            priority,
+            checked,
+            id: `${sectionKey}-${idPrefix}-${index}`
+        }))
+        .filter(Boolean);
+}
+
+function buildSafetyPlanTemplate() {
+    return {
+        emergencyContacts: [],
+        safePlace: '',
+        notes: '',
+        urgentActions: createPlanItems('urgentActions', [
+            "Keep your phone charged and within reach",
+            "Identify the fastest exit route from every room",
+            "Store a spare key, cash, and documents with someone you trust",
+            "Share your code word with trusted contacts"
+        ], { priority: 'critical' }),
+        importantDocuments: createPlanItems('importantDocuments', [
+            "ID/Driver's License",
+            "Birth certificates",
+            "Social Security cards",
+            "Bank account information",
+            "Insurance documents",
+            "Medical records",
+            "School records for children"
+        ]),
+        essentialItems: createPlanItems('essentialItems', [
+            "Medications",
+            "Keys (house, car)",
+            "Phone and charger",
+            "Money/credit cards",
+            "Change of clothes",
+            "Important phone numbers",
+            "Spare glasses or contact lenses"
+        ]),
+        safetySteps: createPlanItems('safetySteps', [
+            "Identify two safe areas in your home with exits",
+            "Plan escape routes and practice them when safe to do so",
+            "Pack an emergency bag and store it outside the home if possible",
+            "Establish a code word with trusted contacts",
+            "Keep important documents and keys ready",
+            "Save emergency numbers in your phone and on paper"
+        ], { priority: 'high' }),
+        communicationPlan: createPlanItems('communicationPlan', [
+            "Choose two trusted contacts for daily check-ins",
+            "Create a code word or emoji that means 'I need help'",
+            "Schedule regular check-in times that feel natural",
+            "Store emergency contacts under innocuous names if needed"
+        ], { priority: 'high' }),
+        supportNetwork: createPlanItems('supportNetwork', [
+            "Identify a friend or family member who can provide temporary shelter",
+            "List nearby shelters or advocacy centers you trust",
+            "Save contact information for a legal advocate or counselor"
+        ], { priority: 'high' }),
+        techSafety: createPlanItems('techSafety', [
+            "Use private/incognito browsing when researching support",
+            "Regularly clear browser history and delete sensitive texts",
+            "Change passwords for email, banking, and social media accounts",
+            "Check devices for unknown tracking or monitoring apps"
+        ]),
+        financialSafety: createPlanItems('financialSafety', [
+            "Save small amounts of cash in a safe location",
+            "Gather financial documents and statements",
+            "Open a separate bank account if possible",
+            "Monitor credit reports for unusual activity"
+        ], { priority: 'medium' }),
+        legalPreparation: createPlanItems('legalPreparation', [
+            "Document incidents with dates, photos, and witness names",
+            "Store copies of legal documents in a safe place",
+            "Research protective order options in your state",
+            "Identify a legal aid service that can assist if needed"
+        ], { priority: 'medium' }),
+        workplaceSafety: createPlanItems('workplaceSafety', [
+            "Update workplace emergency contacts",
+            "Ask security or reception to screen unexpected visitors",
+            "Arrange a safe parking spot or escort when leaving work",
+            "Give a trusted coworker your code word and plan"
+        ]),
+        weaponSafety: createPlanItems('weaponSafety', [
+            "Know where weapons are stored and avoid those areas during conflicts",
+            "If possible, store weapons locked and separate from ammunition",
+            "Plan escape routes that avoid areas where weapons are kept"
+        ], { priority: 'critical' }),
+        childSafety: createPlanItems('childSafety', [
+            "Teach children how to dial 911 and what to say",
+            "Identify safe rooms or neighbors' homes children can go to",
+            "Pack a comfort item and essentials for each child",
+            "Inform school or childcare who is authorized for pickup"
+        ], { priority: 'high' }),
+        selfCare: createPlanItems('selfCare', [
+            "Identify one grounding technique you can use daily",
+            "Schedule small moments for rest or calming activities",
+            "Stay connected with supportive friends or groups",
+            "Plan a safe way to access counseling or support services"
+        ]),
+        scenarioProtocols: [
+            {
+                id: 'during-incident',
+                title: 'If violence starts at home',
+                priority: 'critical',
+                steps: [
+                    "Move to a room with an exit and no weapons",
+                    "Keep your phone and emergency numbers within reach",
+                    "Use your code word to alert trusted contacts",
+                    "If safe, leave immediately using your planned route"
+                ]
+            },
+            {
+                id: 'preparing-to-leave',
+                title: 'When preparing to leave',
+                priority: 'high',
+                steps: [
+                    "Choose a time when the abusive person is away",
+                    "Load emergency items into your vehicle or give them to a trusted person",
+                    "Plan transportation and destination in advance",
+                    "Disable location sharing on devices before leaving"
+                ]
+            },
+            {
+                id: 'after-leaving',
+                title: 'After leaving',
+                priority: 'high',
+                steps: [
+                    "Change locks, passcodes, and security settings",
+                    "Update mailing address and secure important accounts",
+                    "Inform schools and workplaces about safety protocols",
+                    "Work with an advocate to document ongoing threats"
+                ]
+            }
+        ],
+        followUpReminders: createPlanItems('followUpReminders', [
+            "Review and update this plan once a month",
+            "Store a printed copy in a secure location away from home",
+            "Share relevant parts of the plan with trusted supporters",
+            "Schedule regular safety check-ins with yourself or an advocate"
+        ])
+    };
+}
+
+const safetyPlanTemplate = buildSafetyPlanTemplate();
+
+const SAFETY_PLAN_SECTIONS = [
+    { key: 'urgentActions', type: 'checklist', icon: '⚠️', title: 'Urgent Actions', highlighted: true, allowAdd: true, priority: 'critical', resourceCategories: ['hotline', 'shelter'] },
+    { key: 'emergencyContacts', type: 'emergency', icon: '📞', title: 'Emergency Contacts' },
+    { key: 'importantDocuments', type: 'checklist', icon: '📋', title: 'Important Documents', allowAdd: true, resourceCategories: ['legal'] },
+    { key: 'essentialItems', type: 'checklist', icon: '🎒', title: 'Essential Items', allowAdd: true },
+    { key: 'safetySteps', type: 'checklist', icon: '✅', title: 'Safety Steps', numbered: true, allowAdd: true, priority: 'high' },
+    { key: 'communicationPlan', type: 'checklist', icon: '🧑‍🤝‍🧑', title: 'Communication Plan', allowAdd: true, priority: 'high', resourceCategories: ['hotline'] },
+    { key: 'supportNetwork', type: 'checklist', icon: '🤝', title: 'Support Network', allowAdd: true, priority: 'high', resourceCategories: ['shelter', 'counseling'] },
+    { key: 'techSafety', type: 'checklist', icon: '💻', title: 'Technology Safety', allowAdd: true },
+    { key: 'financialSafety', type: 'checklist', icon: '💰', title: 'Financial Safety', allowAdd: true, priority: 'medium', resourceCategories: ['legal'] },
+    { key: 'legalPreparation', type: 'checklist', icon: '⚖️', title: 'Legal Preparation', allowAdd: true, resourceCategories: ['legal'] },
+    { key: 'workplaceSafety', type: 'checklist', icon: '🏢', title: 'Workplace Safety', allowAdd: true },
+    { key: 'weaponSafety', type: 'checklist', icon: '🛡️', title: 'Weapon Safety', allowAdd: true, priority: 'critical' },
+    { key: 'childSafety', type: 'checklist', icon: '🧒', title: 'Child Safety', allowAdd: true, priority: 'high' },
+    { key: 'scenarioProtocols', type: 'protocols', icon: '🧭', title: 'Scenario Plans' },
+    { key: 'selfCare', type: 'checklist', icon: '❤️', title: 'Self-Care & Recovery', allowAdd: true, resourceCategories: ['counseling'] },
+    { key: 'followUpReminders', type: 'checklist', icon: '🔄', title: 'Follow-Up Reminders', allowAdd: true },
+    { key: 'safePlace', type: 'text', icon: '📍', title: 'Safe Place Plan', placeholder: 'Add details about where you can go quickly if you need to leave.' },
+    { key: 'notes', type: 'text', icon: '📝', title: 'Additional Notes', placeholder: 'Use this space for important details, license plates, schedules, or other reminders.' }
+];
+
+const SAFETY_PLAN_CHECKLIST_KEYS = SAFETY_PLAN_SECTIONS
+    .filter(section => section.type === 'checklist')
+    .map(section => section.key);
+
+function normalizeRawChecklistItem(rawItem, sectionKey, index) {
+    if (!rawItem) {
+        return null;
+    }
+    if (typeof rawItem === 'string') {
+        return createPlanItem(sectionKey, rawItem, {
+            source: 'custom',
+            id: `${sectionKey}-raw-${index}`
+        });
+    }
+    if (typeof rawItem === 'object') {
+        const text = rawItem.text || rawItem.value || rawItem.label || rawItem.name || '';
+        return createPlanItem(sectionKey, text, {
+            id: rawItem.id || `${sectionKey}-raw-${index}`,
+            checked: Boolean(rawItem.checked || rawItem.complete),
+            priority: rawItem.priority || rawItem.level || 'standard',
+            source: rawItem.source || (rawItem.id ? 'custom' : 'imported')
+        });
+    }
+    return null;
+}
+
+function mergeChecklistItems(baseItems = [], rawItems, sectionKey) {
+    const result = Array.isArray(baseItems)
+        ? baseItems.map(item => ({ ...item }))
+        : [];
+    if (!Array.isArray(rawItems)) {
+        return result;
+    }
+
+    rawItems.forEach((rawItem, index) => {
+        const normalized = normalizeRawChecklistItem(rawItem, sectionKey, index);
+        if (!normalized) {
+            return;
+        }
+        const existingIndex = result.findIndex(existing =>
+            existing.id === normalized.id || existing.text.toLowerCase() === normalized.text.toLowerCase()
+        );
+        if (existingIndex > -1) {
+            result[existingIndex] = {
+                ...result[existingIndex],
+                checked: normalized.checked ?? result[existingIndex].checked,
+                source: normalized.source || result[existingIndex].source,
+                priority: normalized.priority || result[existingIndex].priority
+            };
+        } else {
+            result.push(normalized);
+        }
+    });
+
+    return result;
+}
+
+function hydrateSafetyPlan(rawPlan) {
+    const base = JSON.parse(JSON.stringify(buildSafetyPlanTemplate()));
+    const plan = base;
+    const raw = rawPlan && typeof rawPlan === 'object' ? rawPlan : {};
+
+    SAFETY_PLAN_CHECKLIST_KEYS.forEach((sectionKey) => {
+        plan[sectionKey] = mergeChecklistItems(plan[sectionKey], raw[sectionKey], sectionKey);
+    });
+
+    if (Array.isArray(raw.emergencyContacts)) {
+        plan.emergencyContacts = raw.emergencyContacts
+            .map(contact => (typeof contact === 'string' ? contact.trim() : ''))
+            .filter(contact => contact.length > 0);
+    }
+
+    if (Array.isArray(raw.scenarioProtocols)) {
+        raw.scenarioProtocols.forEach((rawProtocol, index) => {
+            if (!rawProtocol || typeof rawProtocol !== 'object') {
+                return;
+            }
+            const baseProtocol = plan.scenarioProtocols.find(protocol => protocol.id === rawProtocol.id);
+            if (baseProtocol && Array.isArray(rawProtocol.steps)) {
+                rawProtocol.steps.forEach((step) => {
+                    if (typeof step === 'string') {
+                        const normalizedStep = step.trim();
+                        if (normalizedStep && !baseProtocol.steps.includes(normalizedStep)) {
+                            baseProtocol.steps.push(normalizedStep);
+                        }
+                    }
+                });
+            } else if (!baseProtocol) {
+                const steps = Array.isArray(rawProtocol.steps)
+                    ? rawProtocol.steps
+                        .map(step => (typeof step === 'string' ? step.trim() : ''))
+                        .filter(step => step.length > 0)
+                    : [];
+                if (steps.length === 0) {
+                    return;
+                }
+                plan.scenarioProtocols.push({
+                    id: rawProtocol.id || `scenario-${index}`,
+                    title: rawProtocol.title || 'Custom Scenario Plan',
+                    priority: rawProtocol.priority || 'standard',
+                    steps
+                });
+            }
+        });
+    }
+
+    if (typeof raw.safePlace === 'string') {
+        plan.safePlace = raw.safePlace;
+    }
+
+    if (typeof raw.notes === 'string') {
+        plan.notes = raw.notes;
+    }
+
+    return plan;
+}
+
+function saveSafetyPlan(plan) {
+    AppState.safetyPlan = plan;
+    localStorage.setItem('safey_plan', JSON.stringify(plan));
+}
+
+function addUniquePlanItems(plan, sectionKey, items = [], options = {}) {
+    if (!plan || !Array.isArray(plan[sectionKey]) || !Array.isArray(items)) {
+        return;
+    }
+    items.forEach((text, idx) => {
+        const newItem = createPlanItem(sectionKey, text, {
+            source: options.source || 'custom',
+            priority: options.priority,
+            checked: options.checked,
+            id: options.idPrefix ? `${sectionKey}-${options.idPrefix}-${idx}` : undefined
+        });
+        if (!newItem) {
+            return;
+        }
+        const existing = plan[sectionKey].find(item => item.text.toLowerCase() === newItem.text.toLowerCase());
+        if (existing) {
+            if (options.checked === true) {
+                existing.checked = true;
+            }
+            if (options.priority && existing.priority === 'standard') {
+                existing.priority = options.priority;
+            }
+            if (options.source && existing.source === 'template') {
+                existing.source = options.source;
+            }
+        } else {
+            plan[sectionKey].push(newItem);
+        }
+    });
+}
+
+function addUniqueProtocolSteps(protocol, steps = []) {
+    if (!protocol || !Array.isArray(protocol.steps) || !Array.isArray(steps)) {
+        return;
+    }
+    steps.forEach(step => {
+        if (typeof step !== 'string') {
+            return;
+        }
+        const normalized = step.trim();
+        if (normalized && !protocol.steps.includes(normalized)) {
+            protocol.steps.push(normalized);
+        }
+    });
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function calculateChecklistProgress(items = []) {
+    const total = Array.isArray(items) ? items.length : 0;
+    const completed = Array.isArray(items)
+        ? items.filter(item => item && item.checked).length
+        : 0;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, percent };
+}
+
+function getPlanProgress(plan) {
+    const totals = SAFETY_PLAN_CHECKLIST_KEYS.reduce((acc, key) => {
+        const progress = calculateChecklistProgress(plan[key]);
+        acc.completed += progress.completed;
+        acc.total += progress.total;
+        return acc;
+    }, { completed: 0, total: 0 });
+    const percent = totals.total > 0 ? Math.round((totals.completed / totals.total) * 100) : 0;
+    return { ...totals, percent };
+}
+
+function getSafetyPlanWarnings(plan, riskScore) {
+    const warnings = [];
+    const addWarning = (severity, message, sectionKey) => {
+        warnings.push({ severity, message, sectionKey });
+    };
+
+    const checkSection = (sectionKey, config) => {
+        const items = plan[sectionKey] || [];
+        if (config.requireItems && items.length === 0) {
+            addWarning(config.severity || 'medium', config.emptyMessage, sectionKey);
+            return;
+        }
+        const progress = calculateChecklistProgress(items);
+        if (items.length > 0 && progress.completed === 0) {
+            addWarning(config.severity || 'medium', config.message, sectionKey);
+        }
+    };
+
+    checkSection('urgentActions', {
+        severity: riskScore >= 0.5 ? 'high' : 'medium',
+        message: 'Mark at least one urgent action as in progress so you have a clear first step.',
+        emptyMessage: 'Add urgent actions so you know what to do immediately.',
+        requireItems: true
+    });
+
+    checkSection('communicationPlan', {
+        severity: 'high',
+        message: 'Complete your communication plan so trusted contacts know when to check in.',
+        emptyMessage: 'Add trusted contacts and code words to your communication plan.',
+        requireItems: true
+    });
+
+    checkSection('supportNetwork', {
+        severity: 'high',
+        message: 'Build your support network so you have people ready to help when needed.',
+        emptyMessage: 'Add at least one support person or service you can contact quickly.',
+        requireItems: true
+    });
+
+    if ((plan.weaponSafety || []).length > 0) {
+        checkSection('weaponSafety', {
+            severity: 'high',
+            message: 'Review weapon safety steps to reduce danger during confrontations.'
+        });
+    }
+
+    if ((plan.childSafety || []).length > 0) {
+        checkSection('childSafety', {
+            severity: 'high',
+            message: 'Complete child safety steps so young ones know how to stay safe.'
+        });
+    }
+
+    if (riskScore >= 0.5) {
+        checkSection('financialSafety', {
+            severity: 'medium',
+            message: 'Add financial safety steps to help you leave on your own terms.'
+        });
+    }
+
+    return warnings;
+}
+
+function renderPlanSummary(progress) {
+    const percent = progress.percent || 0;
+    return `
+        <section class="bg-white rounded-card material-shadow-lg p-5 mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🗂️</span>
+                    <div>
+                        <h3 class="text-gray-800 font-bold text-base">Plan Progress</h3>
+                        <p class="text-sm text-gray-600">${progress.completed} of ${progress.total} items complete</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <div class="flex items-center gap-2 text-trust-blue font-semibold text-sm">
+                        <span>${percent}%</span>
+                    </div>
+                    <div class="w-full sm:w-36 h-2 bg-neutral-bg rounded-full overflow-hidden">
+                        <div class="h-full bg-trust-blue transition-all" style="width: ${percent}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    `;
+}
+
+function renderPlanWarnings(warnings) {
+    if (!warnings.length) {
+        return '';
+    }
+    const severityStyles = {
+        high: {
+            classes: 'bg-alert-red bg-opacity-15 border border-alert-red border-opacity-40 text-alert-red',
+            icon: '🚨'
+        },
+        medium: {
+            classes: 'bg-yellow-50 border border-yellow-200 text-yellow-900',
+            icon: '⚠️'
+        },
+        low: {
+            classes: 'bg-neutral-bg border border-gray-200 text-gray-700',
+            icon: 'ℹ️'
+        }
+    };
+    return `
+        <div class="space-y-3 mb-4" data-plan-warnings>
+            ${warnings.map(warning => {
+                const severity = severityStyles[warning.severity] || severityStyles.medium;
+                return `
+                    <div class="${severity.classes} rounded-card p-4 flex items-start gap-3">
+                        <span class="text-xl leading-none">${severity.icon}</span>
+                        <p class="text-sm leading-relaxed">${escapeHtml(warning.message)}</p>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function renderPlanItemBadges(item) {
+    const badges = [];
+    if (item.priority === 'critical') {
+        badges.push({ label: 'Critical', classes: 'bg-alert-red bg-opacity-10 text-alert-red' });
+    } else if (item.priority === 'high') {
+        badges.push({ label: 'High Priority', classes: 'bg-yellow-100 text-yellow-800' });
+    }
+    if (item.source === 'risk') {
+        badges.push({ label: 'Suggested', classes: 'bg-trust-blue bg-opacity-10 text-trust-blue' });
+    }
+    if (item.source === 'custom') {
+        badges.push({ label: 'Custom', classes: 'bg-purple-100 text-purple-700' });
+    }
+    return badges.length
+        ? `
+            <div class="flex flex-wrap gap-2 mt-2">
+                ${badges.map(badge => `
+                    <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full ${badge.classes}">${escapeHtml(badge.label)}</span>
+                `).join('')}
+            </div>
+        `
+        : '';
+}
+
+function renderChecklistItem(meta, item) {
+    const checkboxClasses = meta.highlighted
+        ? 'text-alert-red focus:ring-alert-red'
+        : 'text-gentle-green focus:ring-gentle-green';
+    const removable = item.source !== 'template';
+    return `
+        <li class="flex items-start gap-3 p-2 rounded-lg hover:bg-neutral-bg transition" data-plan-item="${item.id}">
+            <input type="checkbox" class="mt-1.5 rounded border-gray-300 ${checkboxClasses} checkmark-animate" data-plan-checkbox data-section="${meta.key}" data-item-id="${item.id}" ${item.checked ? 'checked' : ''} aria-label="Mark ${escapeHtml(meta.title)} task as complete">
+            <div class="flex-1">
+                <p class="text-sm text-gray-700">${escapeHtml(item.text)}</p>
+                ${renderPlanItemBadges(item)}
+            </div>
+            ${removable ? `
+                <button type="button" class="text-xs text-gray-400 hover:text-alert-red focus:outline-none" data-plan-remove data-section="${meta.key}" data-item-id="${item.id}" aria-label="Remove ${escapeHtml(meta.title)} item">
+                    Remove
+                </button>
+            ` : ''}
+        </li>
+    `;
+}
+
+function renderResourceFooter(meta) {
+    if (!meta.resourceCategories || !meta.resourceCategories.length) {
+        return '';
+    }
+    const buttons = meta.resourceCategories.map(category => {
+        const label = RESOURCE_LABELS[category] || 'Resources';
+        return `
+            <button type="button" class="px-3 py-1 rounded-full bg-neutral-bg hover:bg-trust-blue hover:text-white text-xs font-semibold transition" data-plan-resource="${category}">
+                View ${escapeHtml(label)}
+            </button>
+        `;
+    }).join('');
+
+    return `
+        <div class="mt-4 pt-3 border-t border-neutral-200 flex flex-wrap gap-2 items-center justify-between text-xs text-gray-600">
+            <span class="font-medium text-gray-700">Need support?</span>
+            <div class="flex gap-2 flex-wrap">${buttons}</div>
+        </div>
+    `;
+}
+
+function renderAddItemForm(meta) {
+    const placeholder = meta.addPlaceholder || `Add a new ${meta.title.toLowerCase()}`;
+    return `
+        <form class="flex gap-2 mt-4" data-plan-add="${meta.key}">
+            <label class="sr-only" for="${meta.key}-add-input">Add ${escapeHtml(meta.title)} item</label>
+            <input id="${meta.key}-add-input" data-plan-add-input type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" placeholder="${escapeHtml(placeholder)}" autocomplete="off">
+            <button type="submit" class="px-3 py-2 bg-trust-blue hover:bg-opacity-90 text-white text-sm font-semibold rounded-lg transition">
+                Add
+            </button>
+        </form>
+    `;
+}
+
+function renderChecklistSection(meta, items = []) {
+    const progress = calculateChecklistProgress(items);
+    const baseClasses = meta.highlighted
+        ? 'bg-alert-red bg-opacity-10 border border-alert-red border-opacity-30'
+        : 'bg-white material-shadow-lg';
+    const headerSubtitle = progress.total
+        ? `${progress.completed} of ${progress.total} complete`
+        : 'Add steps that apply to you';
+    return `
+        <section class="${baseClasses} rounded-card p-5 mb-4" data-plan-section="${meta.key}">
+            <div class="flex flex-wrap items-start justify-between gap-4 mb-3">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl">${meta.icon}</span>
+                    <div>
+                        <h3 class="font-bold text-gray-800">${escapeHtml(meta.title)}</h3>
+                        <p class="text-xs text-gray-500">${escapeHtml(headerSubtitle)}</p>
+                    </div>
+                </div>
+                ${progress.total ? `
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <span class="text-xs font-semibold text-trust-blue">${progress.percent}%</span>
+                        <div class="w-full sm:w-32 h-2 bg-neutral-bg rounded-full overflow-hidden">
+                            <div class="h-full bg-trust-blue transition-all" style="width: ${progress.percent}%;"></div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+            <ul class="space-y-2">
+                ${items.length ? items.map(item => renderChecklistItem(meta, item)).join('') : `
+                    <li class="text-sm text-gray-500 italic bg-neutral-bg rounded-lg p-3">
+                        No steps yet. Add the actions that make sense for you.
+                    </li>
+                `}
+            </ul>
+            ${meta.allowAdd ? renderAddItemForm(meta) : ''}
+            ${renderResourceFooter(meta)}
+        </section>
+    `;
+}
+
+function renderEmergencyContactsSection(plan) {
+    const extraContacts = Array.isArray(plan.emergencyContacts) ? plan.emergencyContacts : [];
+    const extraMarkup = extraContacts.length
+        ? `
+            <div class="border-t border-neutral-200 mt-4 pt-4 space-y-2">
+                ${extraContacts.map((contact, index) => `
+                    <div class="flex items-start gap-3 text-sm text-gray-700">
+                        <span class="mt-0.5 text-trust-blue">•</span>
+                        <span class="flex-1">${escapeHtml(contact)}</span>
+                        <button type="button" class="text-xs text-gray-400 hover:text-alert-red" data-plan-remove-contact="${index}" aria-label="Remove contact">
+                            Remove
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `
+        : '';
+
+    return `
+        <section class="bg-white rounded-card material-shadow-lg p-5 mb-4" data-plan-section="emergencyContacts">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-xl">📞</span>
+                <div>
+                    <h3 class="font-bold text-gray-800">Emergency Contacts</h3>
+                    <p class="text-xs text-gray-500">Call quickly if you feel unsafe.</p>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 bg-neutral-bg rounded-lg">
+                    <span class="font-medium text-gray-700 text-sm">National DV Hotline:</span>
+                    <a href="tel:18007997233" class="text-trust-blue font-semibold flex items-center gap-2 hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        1-800-799-7233
+                    </a>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-neutral-bg rounded-lg">
+                    <span class="font-medium text-gray-700 text-sm">Emergency:</span>
+                    <a href="tel:911" class="text-alert-red font-semibold flex items-center gap-2 hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        911
+                    </a>
+                </div>
+            </div>
+            ${extraMarkup}
+            <form class="flex gap-2 mt-4" data-plan-add-contact>
+                <label class="sr-only" for="plan-add-contact-input">Add emergency contact</label>
+                <input id="plan-add-contact-input" data-plan-contact-input type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue" placeholder="Add a trusted person or service">
+                <button type="submit" class="px-3 py-2 bg-trust-blue hover:bg-opacity-90 text-white text-sm font-semibold rounded-lg transition">Add</button>
+            </form>
+        </section>
+    `;
+}
+
+function renderProtocolSection(meta, protocols = []) {
+    if (!Array.isArray(protocols) || !protocols.length) {
+        return '';
+    }
+    const cards = protocols.map(protocol => {
+        const steps = Array.isArray(protocol.steps)
+            ? protocol.steps.map(step => `<li class="pl-1">${escapeHtml(step)}</li>`).join('')
+            : '';
+        if (!steps) {
+            return '';
+        }
+        return `
+            <div class="bg-white rounded-card material-shadow-lg p-5">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span class="text-lg">${meta.icon}</span>
+                    <span>${escapeHtml(protocol.title || 'Scenario Plan')}</span>
+                </h3>
+                <ol class="space-y-3 list-decimal list-inside text-sm text-gray-700">
+                    ${steps}
+                </ol>
+            </div>
+        `;
+    }).filter(Boolean).join('');
+    if (!cards) {
+        return '';
+    }
+    return `
+        <section class="space-y-4 mb-4" data-plan-section="${meta.key}">
+            ${cards}
+        </section>
+    `;
+}
+
+function renderTextSection(meta, value) {
+    return `
+        <section class="bg-white rounded-card material-shadow-lg p-5 mb-4" data-plan-section="${meta.key}">
+            <div class="flex items-center gap-3 mb-3">
+                <span class="text-xl">${meta.icon}</span>
+                <h3 class="font-bold text-gray-800">${escapeHtml(meta.title)}</h3>
+            </div>
+            <textarea data-plan-text="${meta.key}" class="w-full min-h-[120px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent text-sm" placeholder="${escapeHtml(meta.placeholder || '')}">${escapeHtml(value || '')}</textarea>
+        </section>
+    `;
+}
+
+function renderPlanSection(meta, plan) {
+    switch (meta.type) {
+        case 'checklist':
+            return renderChecklistSection(meta, plan[meta.key] || []);
+        case 'emergency':
+            return renderEmergencyContactsSection(plan);
+        case 'protocols':
+            return renderProtocolSection(meta, plan[meta.key]);
+        case 'text':
+            return renderTextSection(meta, plan[meta.key] || '');
+        default:
+            return '';
+    }
+}
 
 // Behavioral Check-in System
 function trackEvent(eventType) {
@@ -446,122 +1176,198 @@ function showResults() {
 
 // Safety Plan Functions
 function generateSafetyPlan() {
-    AppState.safetyPlan = JSON.parse(JSON.stringify(safetyPlanTemplate));
-    
-    // Customize based on risk score
-    if (AppState.riskScore >= 0.6) {
-        AppState.safetyPlan.urgentActions = [
-            "Keep your phone charged and accessible",
-            "Identify the safest room in your home (with exits, no weapons)",
-            "Consider packing an emergency bag with essentials",
-            "Tell someone you trust about your situation",
-            "Know where to go if you need to leave quickly"
-        ];
+    const previousPlan = AppState.safetyPlan ? hydrateSafetyPlan(AppState.safetyPlan) : null;
+    const plan = hydrateSafetyPlan(previousPlan || {});
+    const answers = Array.isArray(AppState.assessmentAnswers) ? AppState.assessmentAnswers : [];
+    const answeredYes = (id) => answers.some(entry => entry.questionId === id && entry.answer === true);
+    const getProtocol = (protocolId) => plan.scenarioProtocols.find(protocol => protocol.id === protocolId);
+
+    const risk = typeof AppState.riskScore === 'number' ? AppState.riskScore : 0;
+    const moderateUrgent = [
+        "Keep your phone charged and within reach at all times",
+        "Share your code word with trusted contacts and test it",
+        "Identify the fastest exit route from every room",
+        "Store a spare key, cash, and copies of documents with someone you trust"
+    ];
+    const highUrgent = [
+        ...moderateUrgent,
+        "Pack and hide an emergency bag outside your home if possible",
+        "Sleep with your phone, keys, and shoes nearby",
+        "Let a trusted person know when you expect to check in next"
+    ];
+    const extremeUrgent = [
+        ...highUrgent,
+        "Move medications, IDs, and critical documents to your go-bag now",
+        "Arrange transportation for an emergency departure",
+        "Keep a charged backup phone or portable battery in your go-bag"
+    ];
+
+    if (risk >= 0.25) {
+        addUniquePlanItems(plan, 'urgentActions', moderateUrgent, { source: 'risk', priority: 'critical' });
     }
-    
-    localStorage.setItem('safey_plan', JSON.stringify(AppState.safetyPlan));
+    if (risk >= 0.5) {
+        addUniquePlanItems(plan, 'urgentActions', highUrgent, { source: 'risk', priority: 'critical' });
+    }
+    if (risk >= 0.75) {
+        addUniquePlanItems(plan, 'urgentActions', extremeUrgent, { source: 'risk', priority: 'critical' });
+    }
+
+    // Personalise sections based on assessment responses
+    if (answeredYes(4) || answeredYes(5)) {
+        addUniquePlanItems(plan, 'weaponSafety', [
+            "Plan which doors or windows you can use that avoid the area where weapons are stored",
+            "Create a signal to alert children or other household members to leave immediately",
+            "If safe, ask a trusted person to store weapons separately or remove ammunition"
+        ], { source: 'risk', priority: 'critical' });
+        const incidentProtocol = getProtocol('during-incident');
+        if (incidentProtocol) {
+            addUniqueProtocolSteps(incidentProtocol, [
+                "Do not try to grab or control the weapon; focus on creating distance",
+                "If you cannot leave safely, put a solid object between you and the weapon"
+            ]);
+        }
+    }
+
+    if (answeredYes(7)) {
+        addUniquePlanItems(plan, 'childSafety', [
+            "Pack identification, medical info, and comfort items for each child",
+            "Practice a calm exit plan with children when it is safe to do so",
+            "Share your child safety plan with schools or caregivers"
+        ], { source: 'risk', priority: 'high' });
+        const leavingProtocol = getProtocol('preparing-to-leave');
+        if (leavingProtocol) {
+            addUniqueProtocolSteps(leavingProtocol, [
+                "Arrange childcare or safe pickup plans before leaving",
+                "Keep copies of custody documents and birth certificates with your emergency items"
+            ]);
+        }
+    }
+
+    if (answeredYes(3)) {
+        addUniquePlanItems(plan, 'supportNetwork', [
+            "Schedule a confidential medical check-up or trauma-informed counseling appointment",
+            "Identify a sexual assault services provider and store their hotline number"
+        ], { source: 'risk', priority: 'high' });
+        addUniquePlanItems(plan, 'followUpReminders', [
+            "Plan a health check with a medical professional when safe"
+        ], { source: 'risk' });
+    }
+
+    if (answeredYes(9)) {
+        addUniquePlanItems(plan, 'financialSafety', [
+            "Gather pay stubs, tax returns, and benefit documents",
+            "Set up paperless statements sent to a secure email account",
+            "Identify a safe location to store cash and financial documents"
+        ], { source: 'risk', priority: 'medium' });
+    }
+
+    if (answeredYes(10)) {
+        addUniquePlanItems(plan, 'techSafety', [
+            "Document stalking incidents with dates, times, and screenshots",
+            "Disable location sharing in social media, messaging apps, and photo services",
+            "Vary your daily routines and routes when possible"
+        ], { source: 'risk' });
+        addUniquePlanItems(plan, 'workplaceSafety', [
+            "Ask building security for assistance when arriving or leaving",
+            "Request a temporary workspace change if you have been followed to work"
+        ], { source: 'risk' });
+    }
+
+    if (answeredYes(6)) {
+        addUniquePlanItems(plan, 'urgentActions', [
+            "If threats escalate, call emergency services immediately",
+            "Share specific threat details with an advocate or trusted contact"
+        ], { source: 'risk', priority: 'critical' });
+        const afterLeavingProtocol = getProtocol('after-leaving');
+        if (afterLeavingProtocol) {
+            addUniqueProtocolSteps(afterLeavingProtocol, [
+                "File a police report documenting threats when it is safe",
+                "Discuss protective order options with a legal advocate"
+            ]);
+        }
+    }
+
+    if (answeredYes(2)) {
+        const afterLeavingProtocol = getProtocol('after-leaving');
+        if (afterLeavingProtocol) {
+            addUniqueProtocolSteps(afterLeavingProtocol, [
+                "Seek medical attention for strangulation, even if no injuries are visible",
+                "Document injuries with photos or medical reports for legal protection"
+            ]);
+        }
+    }
+
+    if (answeredYes(1)) {
+        const incidentProtocol = getProtocol('during-incident');
+        if (incidentProtocol) {
+            addUniqueProtocolSteps(incidentProtocol, [
+                "Have a backup escape route if the situation escalates unexpectedly"
+            ]);
+        }
+        addUniquePlanItems(plan, 'followUpReminders', [
+            "Review this plan weekly while the situation is escalating"
+        ], { source: 'risk' });
+    }
+
+    if (answeredYes(8)) {
+        addUniquePlanItems(plan, 'supportNetwork', [
+            "Record controlling incidents in a secure journal or app",
+            "Share patterns of control with an advocate to build documentation"
+        ], { source: 'risk', priority: 'high' });
+    }
+
+    if (answeredYes(11)) {
+        addUniquePlanItems(plan, 'selfCare', [
+            "Plan safe places to stay when substance use increases risk",
+            "Keep emergency contacts informed about patterns tied to substance use"
+        ], { source: 'risk' });
+    }
+
+    if (answeredYes(12)) {
+        addUniquePlanItems(plan, 'communicationPlan', [
+            "Schedule daily emotional check-ins with someone you trust",
+            "Create a calming routine you can access quickly when you feel afraid"
+        ], { source: 'risk', priority: 'high' });
+    }
+
+    if (answeredYes(13)) {
+        const leavingProtocol = getProtocol('preparing-to-leave');
+        if (leavingProtocol) {
+            addUniqueProtocolSteps(leavingProtocol, [
+                "Create multiple exit plans in case the first attempt is blocked",
+                "Keep transportation options flexible (rideshare, public transit, trusted driver)"
+            ]);
+        }
+        addUniquePlanItems(plan, 'supportNetwork', [
+            "Debrief with a trusted person after any attempt to leave to adjust your plan"
+        ], { source: 'risk', priority: 'high' });
+    }
+
+    saveSafetyPlan(plan);
 }
 
 function displaySafetyPlan() {
-    const plan = AppState.safetyPlan || JSON.parse(localStorage.getItem('safey_plan') || JSON.stringify(safetyPlanTemplate));
     const container = document.getElementById('safety-plan-content');
-    
-    let html = '';
-    
-    if (plan.urgentActions) {
-        html += `
-            <div class="bg-alert-red bg-opacity-10 border border-alert-red border-opacity-30 rounded-card p-5">
-                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <span class="text-xl">⚠️</span>
-                    <span>Urgent Actions</span>
-                </h3>
-                <ul class="space-y-2">
-                    ${plan.urgentActions.map(action => `
-                        <li class="flex items-start gap-3">
-                            <input type="checkbox" class="mt-1 rounded border-gray-300 text-trust-blue focus:ring-trust-blue" aria-label="Mark action as complete">
-                            <span class="text-sm text-gray-700">${action}</span>
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        `;
+    if (!container) {
+        return;
     }
-    
-    html += `
-        <div class="bg-white rounded-card material-shadow-lg p-5">
-            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span class="text-xl">📞</span>
-                <span>Emergency Contacts</span>
-            </h3>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between p-3 bg-neutral-bg rounded-lg">
-                    <span class="font-medium text-gray-700 text-sm">National DV Hotline:</span>
-                    <a href="tel:18007997233" class="text-trust-blue font-semibold flex items-center gap-2 hover:underline">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        1-800-799-7233
-                    </a>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-neutral-bg rounded-lg">
-                    <span class="font-medium text-gray-700 text-sm">Emergency:</span>
-                    <a href="tel:911" class="text-alert-red font-semibold flex items-center gap-2 hover:underline">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        911
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-card material-shadow-lg p-5">
-            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span class="text-xl">📋</span>
-                <span>Important Documents</span>
-            </h3>
-            <div class="space-y-2">
-                ${plan.importantDocuments.map(doc => `
-                    <label class="flex items-center gap-3 p-2 hover:bg-neutral-bg rounded-lg cursor-pointer transition">
-                        <input type="checkbox" class="rounded border-gray-300 text-gentle-green focus:ring-gentle-green checkmark-animate" aria-label="Mark ${doc} as ready">
-                        <span class="text-sm text-gray-700">${doc}</span>
-                    </label>
-                `).join('')}
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-card material-shadow-lg p-5">
-            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span class="text-xl">🎒</span>
-                <span>Essential Items</span>
-            </h3>
-            <div class="space-y-2">
-                ${plan.essentialItems.map(item => `
-                    <label class="flex items-center gap-3 p-2 hover:bg-neutral-bg rounded-lg cursor-pointer transition">
-                        <input type="checkbox" class="rounded border-gray-300 text-gentle-green focus:ring-gentle-green checkmark-animate" aria-label="Mark ${item} as packed">
-                        <span class="text-sm text-gray-700">${item}</span>
-                    </label>
-                `).join('')}
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-card material-shadow-lg p-5">
-            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span class="text-xl">✅</span>
-                <span>Safety Steps</span>
-            </h3>
-            <ol class="space-y-3">
-                ${plan.safetySteps.map((step, idx) => `
-                    <li class="flex gap-3">
-                        <span class="flex-shrink-0 w-6 h-6 bg-trust-blue text-white rounded-full flex items-center justify-center text-xs font-bold">${idx + 1}</span>
-                        <span class="text-sm text-gray-700 pt-0.5">${step}</span>
-                    </li>
-                `).join('')}
-            </ol>
-        </div>
-    `;
-    
-    container.innerHTML = html;
+
+    const rawPlan = AppState.safetyPlan || (() => {
+        const stored = localStorage.getItem('safey_plan');
+        return stored ? JSON.parse(stored) : null;
+    })();
+
+    const plan = hydrateSafetyPlan(rawPlan);
+    saveSafetyPlan(plan);
+
+    const progress = getPlanProgress(plan);
+    const riskScore = typeof AppState.riskScore === 'number' ? AppState.riskScore : 0;
+    const warnings = getSafetyPlanWarnings(plan, riskScore);
+    const sectionsHtml = SAFETY_PLAN_SECTIONS
+        .map(section => renderPlanSection(section, plan))
+        .join('');
+
+    container.innerHTML = `${renderPlanSummary(progress)}${renderPlanWarnings(warnings)}${sectionsHtml}`;
     trackEvent('view_safety_plan');
 }
 
@@ -571,8 +1377,7 @@ function exportSafetyPlan() {
         const raw = localStorage.getItem('safey_plan');
         return raw ? JSON.parse(raw) : null;
     })();
-    const defaultPlan = JSON.parse(JSON.stringify(safetyPlanTemplate));
-    const plan = Object.assign(defaultPlan, storedPlan || {});
+    const plan = hydrateSafetyPlan(storedPlan);
 
     const ensureArray = (value) => {
         if (Array.isArray(value)) return value;
@@ -580,7 +1385,6 @@ function exportSafetyPlan() {
         return [value];
     };
 
-    // Helper: escape user-provided text for safe HTML insertion
     const esc = (str) => {
         if (str === null || str === undefined) return '';
         return String(str)
@@ -592,10 +1396,13 @@ function exportSafetyPlan() {
             .replace(/\n/g, '<br>');
     };
 
-    const asLine = (item) => {
+    const asPlainString = (item) => {
         if (item === null || item === undefined) return '';
         if (typeof item === 'string') return item;
         if (typeof item === 'object') {
+            if (typeof item.text === 'string') {
+                return item.text;
+            }
             const name = item.name || item.label || '';
             const detail = item.phone || item.value || item.details || item.contact || '';
             const note = item.notes || '';
@@ -606,20 +1413,48 @@ function exportSafetyPlan() {
         return String(item);
     };
 
+    const normalizeChecklistItem = (item, index) => {
+        if (item && typeof item === 'object' && typeof item.text === 'string') {
+            const text = item.text.trim();
+            if (!text) return null;
+            return { text, checked: Boolean(item.checked) };
+        }
+        const fallback = asPlainString(item).trim();
+        if (!fallback) {
+            return null;
+        }
+        return { text: fallback, checked: false };
+    };
+
     const listSection = (heading, items, options = {}) => {
-        const { numbered = false } = options;
-        const safeItems = ensureArray(items)
-            .map(asLine)
-            .map(item => item.trim())
-            .filter(item => item.length > 0);
+        const { numbered = false, checkable = false } = options;
+        const safeItems = checkable
+            ? ensureArray(items).map(normalizeChecklistItem).filter(Boolean)
+            : ensureArray(items).map(asPlainString).map(item => item.trim()).filter(item => item.length > 0);
+
         if (!safeItems.length) return '';
+
         const listTag = numbered ? 'ol' : 'ul';
         const listStyle = numbered
             ? 'margin:0;padding-left:22px;color:#374151;line-height:1.6;'
             : 'margin:0;padding-left:18px;color:#374151;line-height:1.6;';
+
         const itemsMarkup = safeItems
-            .map(item => `<li style="margin-bottom:6px">${esc(item)}</li>`)
+            .map((item, idx) => {
+                if (checkable) {
+                    const isObject = typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, 'text');
+                    const text = isObject ? item.text : item;
+                    const checked = isObject ? item.checked : false;
+                    const mark = checked ? '☑' : '☐';
+                    if (numbered) {
+                        return `<li style="margin-bottom:6px">${idx + 1}. <span style="display:inline-block;width:18px;margin-left:6px;">${mark}</span> ${esc(text)}</li>`;
+                    }
+                    return `<li style="margin-bottom:6px"><span style="display:inline-block;width:16px;margin-right:8px;">${mark}</span>${esc(text)}</li>`;
+                }
+                return `<li style="margin-bottom:6px">${esc(item)}</li>`;
+            })
             .join('');
+
         return `
             <section style="padding:16px 24px; border-bottom:1px solid #f1f5f9;">
                 <h2 style="font-size:14px; margin:0 0 8px; color:#111827;">${esc(heading)}</h2>
@@ -629,25 +1464,48 @@ function exportSafetyPlan() {
             </section>`;
     };
 
-    const textSection = (heading, value) => {
-        if (value === null || value === undefined) return '';
-        const normalized = String(value).trim();
-        if (!normalized) return '';
+    const textSection = (heading, value, fallback) => {
+        const normalized = value && typeof value === 'string' ? value.trim() : '';
+        const content = normalized || fallback || '';
+        if (!content) return '';
         return `
             <section style="padding:16px 24px; border-bottom:1px solid #f1f5f9;">
                 <h2 style="font-size:14px; margin:0 0 8px; color:#111827;">${esc(heading)}</h2>
-                <div style="color:#374151; line-height:1.6;">${esc(normalized)}</div>
+                <div style="color:#374151; line-height:1.6;">${esc(content)}</div>
             </section>`;
     };
 
-    // Compose printable sections
+    const protocolSection = (protocols) => {
+        if (!Array.isArray(protocols) || !protocols.length) return '';
+        const cards = protocols
+            .filter(protocol => protocol && Array.isArray(protocol.steps) && protocol.steps.length)
+            .map(protocol => {
+                const steps = protocol.steps
+                    .map(step => step && step.trim())
+                    .filter(Boolean)
+                    .map(step => `<li style="margin-bottom:6px">${esc(step)}</li>`)
+                    .join('');
+                if (!steps) return '';
+                return `
+                    <section style="padding:16px 24px; border-bottom:1px solid #f1f5f9;">
+                        <h2 style="font-size:14px; margin:0 0 8px; color:#111827;">${esc(protocol.title || 'Scenario Plan')}</h2>
+                        <ol style="margin:0;padding-left:22px;color:#374151;line-height:1.6;">
+                            ${steps}
+                        </ol>
+                    </section>
+                `;
+            })
+            .join('');
+        return cards || '';
+    };
+
     const emergencyContacts = [
         'National Domestic Violence Hotline: 1-800-799-7233',
         'Emergency Services: 911',
         ...ensureArray(plan.emergencyContacts)
     ];
 
-    const title = 'Meeting Notes'; // innocuous filename hint for PDF exports
+    const title = 'Meeting Notes';
     const createdAt = new Date().toLocaleString();
     const header = `
         <div style="font-family: system-ui, -apple-system, Arial, sans-serif; padding:24px;">
@@ -675,13 +1533,24 @@ function exportSafetyPlan() {
                 <header>${header}</header>
                 ${listSection('Urgent Actions', plan.urgentActions)}
                 ${listSection('Emergency Contacts', emergencyContacts)}
+                ${listSection('Communication Plan', plan.communicationPlan)}
+                ${listSection('Support Network', plan.supportNetwork)}
                 ${listSection('Important Documents', plan.importantDocuments)}
                 ${listSection('Essential Items', plan.essentialItems)}
                 ${listSection('Safety Steps', plan.safetySteps, { numbered: true })}
-                ${textSection('Safe Place Plan', plan.safePlace)}
-                ${textSection('Additional Notes', plan.notes)}
+                ${listSection('Technology Safety', plan.techSafety)}
+                ${listSection('Financial Safety', plan.financialSafety)}
+                ${listSection('Legal Preparation', plan.legalPreparation)}
+                ${listSection('Workplace Safety', plan.workplaceSafety)}
+                ${listSection('Weapon Safety', plan.weaponSafety)}
+                ${listSection('Child Safety', plan.childSafety)}
+                ${protocolSection(plan.scenarioProtocols)}
+                ${listSection('Self-Care & Recovery', plan.selfCare)}
+                ${listSection('Follow-Up Reminders', plan.followUpReminders)}
+                ${textSection('Safe Place Plan', plan.safePlace, 'Add details about where you can go quickly if you need to leave.')}
+                ${textSection('Additional Notes', plan.notes, 'Use this space for important details, license plates, schedules, or other reminders.')}
                 <section style="padding:16px 24px; font-size:11px; color:#6b7280;">
-                    Keep this plan in a secure location and reach out to a trusted advocate if you feel unsafe.
+                    Keep this plan secured and update it when your circumstances change.
                 </section>
             </div>
         </body>
