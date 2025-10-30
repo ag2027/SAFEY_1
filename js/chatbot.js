@@ -123,8 +123,7 @@ Never store or transmit any private data.
                     messages: apiMessages,
                     max_completion_tokens: 2048,
                     temperature: 0.2,
-                    top_p: 1,
-                    stream: true
+                    top_p: 1
                 })
             });
 
