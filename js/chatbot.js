@@ -1,4 +1,4 @@
-// SAFEY Chatbot - Groq Integration
+// SAFEY Chatbot - Cerebras Integration
 // Handles chat functionality with safety-focused responses
 
 class Chatbot {
@@ -25,16 +25,16 @@ Never store or transmit any private data.
     async init() {
         try {
             // Load encrypted API key from settings
-            const encryptedKey = await storageUtils.loadData('settings', 'groq_api_key');
+            const encryptedKey = await storageUtils.loadData('settings', 'cerebras_api_key');
             if (encryptedKey && encryptedKey.value) {
-                this.apiKey = await cryptoUtils.decrypt(encryptedKey.value, 'groq_key_salt');
+                this.apiKey = await cryptoUtils.decrypt(encryptedKey.value, 'cerebras_key_salt');
                 this.isInitialized = true;
                 console.log('[SAFEY] Chatbot initialized with stored API key');
             } else {
                 // Set default API key (encrypted and stored for security)
-                const defaultApiKey = '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'; // Replace with actual Groq API key
-                const encrypted = await cryptoUtils.encrypt(defaultApiKey, 'groq_key_salt');
-                await storageUtils.saveData('settings', 'groq_api_key', { value: encrypted });
+                const defaultApiKey = 'csk-med292jdkdxhyf55r9tr8cytc2e9tydfkpcjxn6d5e4jf6he'; // Cerebras API key
+                const encrypted = await cryptoUtils.encrypt(defaultApiKey, 'cerebras_key_salt');
+                await storageUtils.saveData('settings', 'cerebras_api_key', { value: encrypted });
                 this.apiKey = defaultApiKey;
                 this.isInitialized = true;
                 console.log('[SAFEY] Chatbot initialized with default API key');
@@ -74,8 +74,8 @@ Never store or transmit any private data.
     async setApiKey(apiKey) {
         try {
             // Encrypt and store the API key
-            const encrypted = await cryptoUtils.encrypt(apiKey, 'groq_key_salt');
-            await storageUtils.saveData('settings', 'groq_api_key', { value: encrypted });
+            const encrypted = await cryptoUtils.encrypt(apiKey, 'cerebras_key_salt');
+            await storageUtils.saveData('settings', 'cerebras_api_key', { value: encrypted });
             this.apiKey = apiKey;
             this.isInitialized = true;
             console.log('[SAFEY] API key updated successfully');
@@ -111,18 +111,20 @@ Never store or transmit any private data.
                 ...this.messages.slice(-10) // Keep last 10 messages for context
             ];
 
-            // Call Groq API
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            // Call Cerebras API
+            const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
+                    model: 'llama-3.3-70b',
                     messages: apiMessages,
-                    max_tokens: 150,
-                    temperature: 0.7
+                    max_completion_tokens: 2048,
+                    temperature: 0.2,
+                    top_p: 1,
+                    stream: true
                 })
             });
 
