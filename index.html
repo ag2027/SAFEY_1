@@ -140,14 +140,14 @@
 
             <!-- Greeting Section -->
             <div class="mb-8">
-                <h2 class="text-xl font-semibold text-gray-800 mb-1">Welcome back, you're in control.</h2>
-                <p class="text-gray-600 text-sm">Your safety starts here.</p>
+                <h2 class="text-xl font-semibold text-gray-800 mb-1" data-i18n="home.welcome">Welcome back, you're in control.</h2>
+                <p class="text-gray-600 text-sm" data-i18n="home.subtitle">Your safety starts here.</p>
             </div>
 
             <!-- Safety Assistant Inline Prompt -->
             <div id="inline-chatbot-container" class="mb-8">
                 <form id="inline-chatbot-form" class="relative bg-white p-2 rounded-card material-shadow-lg flex items-center">
-                    <input type="text" id="inline-chatbot-input" class="flex-grow bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-500 pl-3" placeholder="Ask the Safety Assistant…" aria-label="Ask Safety Assistant">
+                    <input type="text" id="inline-chatbot-input" class="flex-grow bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-500 pl-3" placeholder="Ask the Safety Assistant…" data-i18n="home.chatbot.placeholder" aria-label="Ask Safety Assistant">
                     <button type="submit" id="inline-chatbot-submit" class="bg-hopeful-teal text-white rounded-full w-10 h-10 flex items-center justify-center ml-2 btn-scale" aria-label="Send to Safety Assistant" disabled>
                         <svg id="send-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -163,34 +163,34 @@
                     <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-trust-blue bg-opacity-10">
                         <span class="text-2xl">🧭</span>
                     </div>
-                    <span class="font-semibold text-gray-800 text-base">Start Assessment</span>
+                    <span class="font-semibold text-gray-800 text-base" data-i18n="home.assessment">Start Assessment</span>
                 </button>
 
                 <button id="safety-plan-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="View your safety plan">
                     <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-hopeful-teal bg-opacity-10">
                         <span class="text-2xl">🛡️</span>
                     </div>
-                    <span class="font-semibold text-gray-800 text-base">My Safety Plan</span>
+                    <span class="font-semibold text-gray-800 text-base" data-i18n="home.safetyPlan">My Safety Plan</span>
                 </button>
 
                 <button id="resources-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Browse safety resources">
                     <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-trust-blue bg-opacity-10">
                         <span class="text-2xl">🏠</span>
                     </div>
-                    <span class="font-semibold text-gray-800 text-base">Resources</span>
+                    <span class="font-semibold text-gray-800 text-base" data-i18n="home.resources">Resources</span>
                 </button>
 
                 <button id="emergency-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Access emergency resources">
                     <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-alert-red bg-opacity-10">
                         <span class="text-2xl">🚨</span>
                     </div>
-                    <span class="font-semibold text-gray-800 text-base">Emergency Mode</span>
+                    <span class="font-semibold text-gray-800 text-base" data-i18n="home.emergency">Emergency Mode</span>
                 </button>
             </div>
 
             <!-- Info Section -->
             <div class="mt-6 text-center">
-                <p class="text-sm text-gray-500">
+                <p class="text-sm text-gray-500" data-i18n="home.privacy">
                     Your data stays private and offline.
                 </p>
             </div>
@@ -338,8 +338,8 @@
                     </svg>
                 </button>
                 <div class="ml-3">
-                    <h2 class="text-xl font-bold text-gray-800">Safety Assistant</h2>
-                    <p class="text-sm text-gray-600">Talk to our AI safety assistant</p>
+                    <h2 class="text-xl font-bold text-gray-800" data-i18n="chatbot.title">Safety Assistant</h2>
+                    <p class="text-sm text-gray-600" data-i18n="chatbot.subtitle">Talk to our AI safety assistant</p>
                 </div>
             </div>
 
@@ -352,7 +352,7 @@
                             <span class="text-sm">🤖</span>
                         </div>
                         <div class="bg-neutral-bg rounded-lg p-3 max-w-xs">
-                            <p class="text-sm text-gray-700">Hi! I'm here to help you with safety concerns. You can ask me about resources, safety planning, or just talk about what's on your mind. Everything stays private on your device.</p>
+                            <p class="text-sm text-gray-700" data-i18n="chatbot.welcome">Hi! I'm here to help you with safety concerns. You can ask me about resources, safety planning, or just talk about what's on your mind. Everything stays private on your device.</p>
                         </div>
                     </div>
                 </div>
@@ -376,7 +376,7 @@
 
             <!-- Message Input -->
             <div class="flex gap-2">
-                <input type="text" id="chat-input" placeholder="Type your message..." class="flex-1 px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Type your message">
+                <input type="text" id="chat-input" placeholder="Type your message..." data-i18n="chatbot.placeholder" class="flex-1 px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Type your message">
                 <button id="send-message" class="px-4 py-3 bg-hopeful-teal hover:bg-opacity-90 text-white font-semibold rounded-card transition btn-scale disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Send message">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -388,7 +388,7 @@
             <div id="chat-loading" class="hidden mt-4 text-center">
                 <div class="inline-flex items-center gap-2 text-gray-600">
                     <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-trust-blue"></div>
-                    <span class="text-sm">Thinking...</span>
+                    <span class="text-sm" data-i18n="chatbot.thinking">Thinking...</span>
                 </div>
             </div>
         </div>
@@ -491,7 +491,7 @@
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-card max-w-md w-full mx-4 p-6 material-shadow-lg">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-gray-800">Settings</h3>
+                <h3 class="text-xl font-bold text-gray-800" data-i18n="settings.title">Settings</h3>
                 <button id="close-settings" class="p-2 hover:bg-gray-100 rounded-lg transition" aria-label="Close settings">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

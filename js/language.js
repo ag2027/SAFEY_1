@@ -319,6 +319,8 @@ class LanguageManager {
                 if (element.placeholder !== undefined) {
                     element.placeholder = translation;
                 }
+            } else if (element.tagName === 'OPTION') {
+                element.textContent = translation;
             } else {
                 element.textContent = translation;
             }
@@ -330,6 +332,44 @@ class LanguageManager {
             const translation = this.translate(key);
             element.setAttribute('aria-label', translation);
         });
+
+        // Dynamic content translation - refresh screens if they're currently active
+        this.refreshDynamicContent();
+    }
+
+    refreshDynamicContent() {
+        // Refresh the currently visible screen if it has dynamic content
+        const activeScreen = document.querySelector('.screen.active');
+        if (!activeScreen) return;
+
+        // Refresh safety plan if it's active
+        if (activeScreen.id === 'safety-plan-screen' && typeof displaySafetyPlan === 'function') {
+            displaySafetyPlan();
+        }
+
+        // Refresh resources if it's active
+        if (activeScreen.id === 'resources-screen' && typeof displayResources === 'function') {
+            const activeFilter = document.querySelector('.filter-btn.active');
+            const category = activeFilter ? activeFilter.dataset.category : 'all';
+            displayResources(category);
+        }
+
+        // Refresh chatbot welcome message if it's active
+        if (activeScreen.id === 'chatbot-screen') {
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                const welcomeMsg = chatMessages.querySelector('.message-content');
+                if (welcomeMsg && welcomeMsg.parentElement.classList.contains('assistant')) {
+                    const firstUserMsg = Array.from(chatMessages.children).find(msg => 
+                        msg.classList.contains('user')
+                    );
+                    // Only update if it's still the initial welcome message
+                    if (!firstUserMsg) {
+                        welcomeMsg.textContent = this.translate('chatbot.welcome');
+                    }
+                }
+            }
+        }
     }
 
     getSpanishPromptModifier() {
