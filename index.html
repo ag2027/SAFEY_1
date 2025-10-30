@@ -265,8 +265,8 @@
             </div>
 
             <!-- Floating Action Button -->
-            <div class="fixed bottom-6 right-6 md:right-auto md:left-1/2 md:transform md:-translate-x-1/2 md:max-w-md md:w-full md:px-6">
-                <button id="export-plan" class="ml-auto block bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-3 px-6 rounded-full material-shadow-lg transition btn-scale flex items-center gap-2" aria-label="Download safety plan as PDF">
+            <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2">
+                <button id="export-plan" class="block bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-3 px-6 rounded-full material-shadow-lg transition btn-scale flex items-center gap-2" aria-label="Download safety plan as PDF">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -301,10 +301,14 @@
             <!-- Category Tabs -->
             <div class="mb-6 flex gap-2 flex-wrap">
                 <button class="filter-btn active px-4 py-2 rounded-full text-sm font-semibold bg-trust-blue text-white transition" data-category="all" aria-label="Show all resources">All</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="shelter" aria-label="Show shelters">Shelters</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="legal" aria-label="Show legal aid">Legal Aid</button>
-                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="counseling" aria-label="Show counseling">Counseling</button>
                 <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="hotline" aria-label="Show hotlines">Hotlines</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="shelter" aria-label="Show shelters">Shelters</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="legal" aria-label="Show legal aid">Legal</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="counseling" aria-label="Show counseling">Counseling</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="financial" aria-label="Show financial aid">Financial</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="child-services" aria-label="Show child services">Child Services</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="lgbtq" aria-label="Show LGBTQ+ resources">LGBTQ+</button>
+                <button class="filter-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-100 material-shadow transition" data-category="tech-safety" aria-label="Show tech safety resources">Tech Safety</button>
             </div>
 
             <!-- Offline Banner (hidden by default) -->

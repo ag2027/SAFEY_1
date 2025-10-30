@@ -193,70 +193,162 @@ const assessmentQuestions = [
 
 // Resources Data
 const resources = [
+    // --- Hotlines ---
     {
         name: "National Domestic Violence Hotline",
         category: "hotline",
         phone: "1-800-799-7233",
-        description: "24/7 confidential support",
+        website: "https://www.thehotline.org",
+        description: "24/7 confidential support, resources, and information.",
         available: "24/7"
-    },
-    {
-        name: "Safe Haven Shelter",
-        category: "shelter",
-        phone: "1-555-0101",
-        address: "Confidential location",
-        description: "Emergency housing and support services"
-    },
-    {
-        name: "Women's Legal Aid",
-        category: "legal",
-        phone: "1-555-0202",
-        description: "Free legal consultation and representation",
-        hours: "Mon-Fri 9AM-5PM"
-    },
-    {
-        name: "Healing Hearts Counseling",
-        category: "counseling",
-        phone: "1-555-0303",
-        description: "Trauma-informed therapy services",
-        hours: "Mon-Sat 8AM-8PM"
     },
     {
         name: "Crisis Text Line",
         category: "hotline",
         phone: "Text HOME to 741741",
-        description: "24/7 crisis support via text",
+        website: "https://www.crisistextline.org",
+        description: "24/7 crisis support via text message.",
         available: "24/7"
     },
     {
-        name: "Family Justice Center",
-        category: "legal",
-        phone: "1-555-0404",
-        description: "Protection orders and legal advocacy",
-        hours: "Mon-Fri 8AM-6PM"
+        name: "National Sexual Assault Hotline (RAINN)",
+        category: "hotline",
+        phone: "1-800-656-HOPE",
+        website: "https://www.rainn.org",
+        description: "24/7 confidential support for sexual assault survivors.",
+        available: "24/7"
     },
     {
-        name: "New Beginnings Shelter",
+        name: "StrongHearts Native Helpline",
+        category: "hotline",
+        phone: "1-844-762-8483",
+        website: "https://strongheartshelpline.org",
+        description: "Culturally-specific support for Native Americans and Alaska Natives.",
+        available: "Daily 7AM-10PM CT"
+    },
+
+    // --- Shelters & Housing ---
+    {
+        name: "National Runaway Safeline",
         category: "shelter",
-        phone: "1-555-0505",
-        address: "Confidential location",
-        description: "Safe housing for families"
+        phone: "1-800-RUNAWAY",
+        website: "https://www.1800runaway.org",
+        description: "Provides support for runaway and homeless youth, can help locate shelters."
     },
     {
-        name: "Support Circle Counseling",
+        name: "Safe Horizon",
+        category: "shelter",
+        phone: "1-800-621-HOPE",
+        website: "https://www.safehorizon.org",
+        description: "Assists victims of crime and abuse, including offering shelter options."
+    },
+
+    // --- Legal Aid ---
+    {
+        name: "WomensLaw.org",
+        category: "legal",
+        website: "https://www.womenslaw.org",
+        description: "Plain-language legal information for all 50 states, DC, and US territories."
+    },
+    {
+        name: "Legal Services Corporation (LSC)",
+        category: "legal",
+        website: "https://www.lsc.gov/find-legal-aid",
+        description: "Find federally funded legal aid offices across the country."
+    },
+    {
+        name: "National Crime Victim Law Institute",
+        category: "legal",
+        website: "https://law.lclark.edu/centers/national_crime_victim_law_institute/",
+        description: "Provides legal resources and referrals for crime victims."
+    },
+
+    // --- Counseling & Mental Health ---
+    {
+        name: "SAMHSA National Helpline",
         category: "counseling",
-        phone: "1-555-0606",
-        description: "Group and individual therapy",
-        hours: "Daily 9AM-9PM"
+        phone: "1-800-662-HELP",
+        website: "https://www.samhsa.gov/find-help/national-helpline",
+        description: "Free, confidential, 24/7 treatment referral and information service for mental health and substance use disorders."
+    },
+    {
+        name: "Psychology Today Therapist Finder",
+        category: "counseling",
+        website: "https://www.psychologytoday.com/us/therapists",
+        description: "A directory to find licensed therapists and counselors nationwide."
+    },
+
+    // --- Financial Aid ---
+    {
+        name: "National Foundation for Credit Counseling (NFCC)",
+        category: "financial",
+        website: "https://www.nfcc.org",
+        description: "Provides access to nonprofit financial counseling services."
+    },
+    {
+        name: "The Allstate Foundation - Moving Ahead",
+        category: "financial",
+        website: "https://allstatefoundation.org/what-we-do/end-domestic-violence/moving-ahead-curriculum/",
+        description: "A financial literacy curriculum designed for domestic violence survivors."
+    },
+
+    // --- Child Services ---
+    {
+        name: "Childhelp National Child Abuse Hotline",
+        category: "child-services",
+        phone: "1-800-4-A-CHILD",
+        website: "https://www.childhelp.org/hotline/",
+        description: "24/7 hotline with professional crisis counselors for child abuse concerns."
+    },
+    {
+        name: "The National Center for Missing & Exploited Children",
+        category: "child-services",
+        phone: "1-800-THE-LOST",
+        website: "https://www.missingkids.org",
+        description: "Resources for child safety, protection, and recovery."
+    },
+
+    // --- LGBTQ+ ---
+    {
+        name: "The Trevor Project",
+        category: "lgbtq",
+        phone: "1-866-488-7386",
+        website: "https://www.thetrevorproject.org",
+        description: "24/7 crisis intervention and suicide prevention for LGBTQ youth."
+    },
+    {
+        name: "The Anti-Violence Project (AVP)",
+        category: "lgbtq",
+        phone: "212-714-1141",
+        website: "https://avp.org",
+        description: "Empowers LGBTQ+ and HIV-affected communities to end all forms of violence."
+    },
+
+    // --- Tech Safety ---
+    {
+        name: "NNEDV - Tech Safety",
+        category: "tech-safety",
+        website: "https://www.techsafety.org",
+        description: "Resources on technology-facilitated abuse and how to stay safe online."
+    },
+    {
+        name: "Clinic to End Tech Abuse (CETA)",
+        category: "tech-safety",
+        website: "https://www.cetaclinic.org/",
+        description: "Provides assistance to survivors of technology-facilitated abuse."
     }
 ];
 
 // Safety Plan Utilities and Template
 const RESOURCE_LABELS = {
     hotline: 'Hotlines',
-    shelter: 'Shelters',
+    shelter: 'Shelters & Housing',
     legal: 'Legal Aid',
-    counseling: 'Counseling'
+    counseling: 'Counseling',
+    financial: 'Financial Aid',
+    'child-services': 'Child Services',
+    lgbtq: 'LGBTQ+ Support',
+    'tech-safety': 'Tech Safety'
 };
 
 function generatePlanItemId(sectionKey) {
@@ -1941,7 +2033,11 @@ function displayResources(category = 'all') {
         'hotline': '☎️',
         'shelter': '🏠',
         'legal': '⚖️',
-        'counseling': '💬'
+        'counseling': '💬',
+        'financial': '💰',
+        'child-services': '🧒',
+        'lgbtq': '🏳️‍🌈',
+        'tech-safety': '💻'
     };
     
     container.innerHTML = filtered.map(resource => `
@@ -1961,7 +2057,15 @@ function displayResources(category = 'all') {
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
-                        <span class="text-gray-700">${resource.phone}</span>
+                        <a href="tel:${resource.phone.replace(/[^0-9]/g, '')}" class="text-gray-700 hover:underline">${resource.phone}</a>
+                    </div>
+                ` : ''}
+                ${resource.website ? `
+                    <div class="flex items-center gap-2 text-sm">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <a href="${resource.website}" target="_blank" rel="noopener noreferrer" class="text-trust-blue hover:underline truncate">${resource.website.replace('https://www.', '').replace('http://www.', '').replace('https://', '')}</a>
                     </div>
                 ` : ''}
                 ${resource.hours ? `
@@ -1990,24 +2094,24 @@ function displayResources(category = 'all') {
                     </div>
                 ` : ''}
             </div>
+            <div class="flex gap-2">
             ${resource.phone ? `
-                <div class="flex gap-2">
-                    <a href="tel:${resource.phone.replace(/[^0-9]/g, '')}" class="flex-1 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-2.5 px-4 rounded-lg text-center transition btn-scale flex items-center justify-center gap-2" aria-label="Call ${resource.name}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        Call
-                    </a>
-                    ${resource.address && resource.address !== 'Confidential location' ? `
-                        <button class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-4 rounded-lg transition btn-scale flex items-center justify-center gap-2" aria-label="Get directions to ${resource.name}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            Directions
-                        </button>
-                    ` : ''}
-                </div>
+                <a href="tel:${resource.phone.replace(/[^0-9]/g, '')}" class="flex-1 bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-2.5 px-4 rounded-lg text-center transition btn-scale flex items-center justify-center gap-2" aria-label="Call ${resource.name}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    Call
+                </a>
             ` : ''}
+            ${resource.website ? `
+                <a href="${resource.website}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-4 rounded-lg transition btn-scale flex items-center justify-center gap-2" aria-label="Visit website for ${resource.name}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Website
+                </a>
+            ` : ''}
+            </div>
         </div>
     `).join('');
 }
