@@ -1409,11 +1409,8 @@ function initializeInlineChatbot() {
     const submitBtn = document.getElementById('inline-chatbot-submit');
     const sendIcon = document.getElementById('send-icon');
     const loadingSpinner = document.getElementById('loading-spinner');
-    const responsePreview = document.getElementById('inline-chatbot-response-preview');
-    const responseText = document.getElementById('inline-chatbot-response-text');
-    const continueBtn = document.getElementById('continue-to-chatbot-btn');
 
-    if (!form || !input || !submitBtn || !sendIcon || !loadingSpinner || !responsePreview || !responseText || !continueBtn) {
+    if (!form || !input || !submitBtn || !sendIcon || !loadingSpinner) {
         console.error('Inline chatbot elements not found');
         return;
     }
@@ -1436,33 +1433,26 @@ function initializeInlineChatbot() {
         submitBtn.disabled = true;
         sendIcon.classList.add('hidden');
         loadingSpinner.classList.remove('hidden');
-        responsePreview.classList.add('hidden');
 
         try {
-            const assistantMessage = await chatbot.sendMessage(userMessage);
+            await chatbot.sendMessage(userMessage);
             
-            // Display preview
-            responseText.textContent = assistantMessage.substring(0, 150) + (assistantMessage.length > 150 ? '...' : '');
-            responsePreview.classList.remove('hidden');
+            // Transition to chatbot screen
+            showScreen('chatbot');
+            displayChatHistory();
 
             // Reset input
             input.value = '';
 
         } catch (error) {
             console.error('Inline chatbot error:', error);
-            responseText.textContent = 'Sorry, I couldn\'t get a response. Please try again.';
-            responsePreview.classList.remove('hidden');
+            showToast('Sorry, I couldn\'t get a response. Please try again.', 'error');
         } finally {
             // Hide loading state
             submitBtn.disabled = false;
             sendIcon.classList.remove('hidden');
             loadingSpinner.classList.add('hidden');
         }
-    });
-
-    continueBtn.addEventListener('click', () => {
-        showScreen('chatbot');
-        displayChatHistory(); // This function needs to be available in chatbot UI logic
     });
 
     input.addEventListener('keydown', (e) => {

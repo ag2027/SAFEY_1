@@ -4,7 +4,7 @@
 class StorageUtils {
     constructor() {
         this.dbName = 'SAFEY_DB';
-    this.dbVersion = 2;
+        this.dbVersion = 3;
         this.db = null;
         this.hasIndexedDB = 'indexedDB' in window;
         this.initDB();
@@ -49,6 +49,9 @@ class StorageUtils {
                 }
                 if (!db.objectStoreNames.contains('notes')) {
                     db.createObjectStore('notes', { keyPath: 'key' });
+                }
+                if (!db.objectStoreNames.contains('chatbot')) {
+                    db.createObjectStore('chatbot', { keyPath: 'key' });
                 }
             };
         });
