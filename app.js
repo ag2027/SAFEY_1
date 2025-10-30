@@ -1084,6 +1084,9 @@ function setupStealthSettingsListeners() {
             } else if (template === 'notes') {
                 templateUnlockHint.textContent = '🔒 Secure (⋯ five times) - Press the three-dot menu five times to unlock';
                 templateUnlockHint.classList.remove('hidden');
+            } else if (template === 'weather') {
+                templateUnlockHint.textContent = '🔒 Secure (double-tap) - Double-tap anywhere on screen to unlock';
+                templateUnlockHint.classList.remove('hidden');
             } else {
                 templateUnlockHint.classList.add('hidden');
             }
@@ -1096,12 +1099,7 @@ function setupStealthSettingsListeners() {
         // Update unlock hint
         updateUnlockHint(template);
         
-        if (template === 'custom') {
-            document.getElementById('custom-url-section').classList.remove('hidden');
-        } else {
-            document.getElementById('custom-url-section').classList.add('hidden');
-            await stealthController.changeTemplate(template);
-        }
+        await stealthController.changeTemplate(template);
     });
     
     // PIN length selector
