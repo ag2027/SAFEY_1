@@ -87,45 +87,106 @@ const AppState = {
 };
 
 // Risk Assessment Questions
+// Weight system: Critical (3), Severe (2), Moderate (1.5), Standard (1)
 const assessmentQuestions = [
+    // Physical Violence & Escalation
     {
         id: 1,
-        question: "Has the violence increased in severity or frequency over the past year?",
+        question: "Has the violence increased in severity or frequency in the past month?",
+        weight: 2,
+        category: "escalation",
         type: "boolean"
     },
     {
         id: 2,
-        question: "Does your partner own or have access to a gun?",
+        question: "Has your partner ever choked or strangled you?",
+        weight: 3,
+        category: "physical",
         type: "boolean"
     },
     {
         id: 3,
-        question: "Have you left or tried to leave the relationship in the past year?",
+        question: "Has your partner ever forced or coerced you into sexual activity?",
+        weight: 3,
+        category: "sexual",
         type: "boolean"
     },
+    
+    // Weapons & Access
     {
         id: 4,
-        question: "Does your partner try to control most or all of your daily activities?",
+        question: "Does your partner own or have access to a gun?",
+        weight: 3,
+        category: "weapons",
         type: "boolean"
     },
     {
         id: 5,
-        question: "Has your partner ever threatened to kill you or themselves?",
+        question: "Does your partner have access to other weapons (knives, bats, etc.)?",
+        weight: 2,
+        category: "weapons",
         type: "boolean"
     },
+    
+    // Threats & Control
     {
         id: 6,
-        question: "Does your partner use drugs or alcohol excessively?",
+        question: "Has your partner ever threatened to kill you or themselves?",
+        weight: 3,
+        category: "threats",
         type: "boolean"
     },
     {
         id: 7,
-        question: "Are you afraid of your partner?",
+        question: "Has your partner ever threatened to harm your children or used them against you?",
+        weight: 2,
+        category: "threats",
         type: "boolean"
     },
     {
         id: 8,
-        question: "Has your partner ever choked or strangled you?",
+        question: "Does your partner try to control most or all of your daily activities?",
+        weight: 1.5,
+        category: "control",
+        type: "boolean"
+    },
+    {
+        id: 9,
+        question: "Does your partner control your finances and prevent you from working?",
+        weight: 2,
+        category: "control",
+        type: "boolean"
+    },
+    
+    // Stalking & Isolation
+    {
+        id: 10,
+        question: "Has your partner ever stalked, followed, or harassed you outside the home?",
+        weight: 2,
+        category: "stalking",
+        type: "boolean"
+    },
+    
+    // Behavioral Indicators
+    {
+        id: 11,
+        question: "Does your partner use drugs or alcohol excessively?",
+        weight: 1.5,
+        category: "behavior",
+        type: "boolean"
+    },
+    {
+        id: 12,
+        question: "Are you afraid of your partner?",
+        weight: 1.5,
+        category: "behavior",
+        type: "boolean"
+    },
+    {
+        id: 13,
+        question: "Have you left or tried to leave the relationship in the past year?",
+        weight: 1,
+        category: "history",
         type: "boolean"
     }
 ];
@@ -302,24 +363,27 @@ function answerQuestion(answer) {
 }
 
 function calculateRiskScore() {
-    // Simple scoring: each "yes" adds to risk
-    // Questions 2, 5, 8 are weighted higher (gun, threats, choking)
+    // Weighted scoring based on lethality research
+    // Critical indicators (3pts): strangulation, gun access, sexual violence, threats to kill
+    // Severe indicators (2pts): other weapons, threats involving children, financial control, stalking, recent escalation
+    // Moderate (1.5pts): control tactics, substance abuse, fear
+    // Standard (1pt): history of leaving
+    
     let score = 0;
-    const highRiskQuestions = [2, 5, 8];
+    let maxScore = 0;
     
     AppState.assessmentAnswers.forEach(answer => {
-        if (answer.answer) {
-            if (highRiskQuestions.includes(answer.questionId)) {
-                score += 2;
-            } else {
-                score += 1;
+        const question = assessmentQuestions.find(q => q.id === answer.questionId);
+        if (question) {
+            maxScore += question.weight;
+            if (answer.answer) {
+                score += question.weight;
             }
         }
     });
     
     // Normalize to 0-1 scale
-    const maxScore = assessmentQuestions.length + 3; // 8 + 3 extra for weighted questions
-    AppState.riskScore = score / maxScore;
+    AppState.riskScore = maxScore > 0 ? score / maxScore : 0;
     
     // Save to localStorage
     localStorage.setItem('safey_risk_score', AppState.riskScore);
@@ -335,21 +399,27 @@ function showResults() {
     
     let riskLevel, emoji, color, message;
     
-    if (AppState.riskScore < 0.3) {
+    // Updated thresholds based on new weighting system
+    if (AppState.riskScore < 0.25) {
         riskLevel = 'Low Risk';
         emoji = '🟢';
         color = 'text-gentle-green';
         message = 'You\'re taking the right steps. Here\'s how to stay safe: Continue building your support network and keep safety resources accessible.';
-    } else if (AppState.riskScore < 0.6) {
+    } else if (AppState.riskScore < 0.50) {
         riskLevel = 'Moderate Risk';
         emoji = '🟡';
         color = 'text-yellow-500';
         message = 'You\'re taking the right steps. Here\'s how to stay safe: We recommend creating a safety plan and reviewing available resources. Consider reaching out to a domestic violence advocate.';
-    } else {
+    } else if (AppState.riskScore < 0.75) {
         riskLevel = 'High Risk';
         emoji = '🔴';
         color = 'text-alert-red';
         message = 'You\'re taking the right steps. Here\'s how to stay safe: Your safety is our priority. Please consider contacting the National Domestic Violence Hotline (1-800-799-7233) and review the resources and safety plan features.';
+    } else {
+        riskLevel = 'Extreme Risk';
+        emoji = '🚨';
+        color = 'text-alert-red';
+        message = 'IMMEDIATE ACTION RECOMMENDED: You may be in serious danger. Please contact the National Domestic Violence Hotline (1-800-799-7233) immediately or call 911 if you need emergency help. Consider accessing emergency shelter and safety resources now.';
     }
     
     scoreDisplay.innerHTML = `
