@@ -607,6 +607,34 @@
 
                 <hr class="border-gray-200">
 
+                <!-- Trusted Contacts - start -->
+                <div id="trusted-contacts-settings">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Trusted Contacts</label>
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 mb-3">
+                        Add trusted contacts to send quick alerts during emergencies. All information stays encrypted on this device.
+                    </div>
+                    <div id="trusted-contacts-list" class="space-y-3"></div>
+                    <p id="trusted-contacts-empty" class="text-xs text-gray-500">No trusted contacts yet. Add up to 5 people you can safely reach out to.</p>
+                    <form id="trusted-contact-form" class="space-y-2 mt-3" autocomplete="off">
+                        <div class="grid grid-cols-1 gap-2">
+                            <input type="text" id="trusted-contact-name" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue text-sm" placeholder="Contact name" aria-label="Trusted contact name">
+                            <input type="tel" id="trusted-contact-phone" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue text-sm" placeholder="Phone number" aria-label="Trusted contact phone">
+                        </div>
+                        <button id="add-trusted-contact" class="w-full bg-trust-blue hover:bg-opacity-90 text-white font-semibold py-2.5 px-4 rounded-lg transition text-sm" type="submit">
+                            Add Trusted Contact
+                        </button>
+                    </form>
+                    <div class="mt-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2" for="trusted-contact-message-template">Default Alert Message</label>
+                        <textarea id="trusted-contact-message-template" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-trust-blue text-sm min-h-[90px]" placeholder="Write the alert message that will be shared with trusted contacts." aria-label="Trusted contact alert message"></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Placeholders: <code class="font-mono">{{reason}}</code>, <code class="font-mono">{{risk}}</code>, <code class="font-mono">{{time}}</code></p>
+                        <p id="trusted-contact-template-status" class="text-xs text-green-600 mt-1 hidden">Message saved</p>
+                    </div>
+                </div>
+                <!-- Trusted Contacts - end -->
+
+                <hr class="border-gray-200">
+
                 <!-- Emergency Mode - start -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-3">Emergency Mode</label>
@@ -652,6 +680,7 @@
     <script src="js/storage-utils.js"></script>
     <script src="js/event-logger.js"></script>
     <script src="js/stealth-settings.js"></script>
+    <script src="js/trusted-contacts.js"></script>
     <script src="js/lockout-manager.js"></script>
     <script src="js/disguise-renderer.js"></script>
     <script src="js/stealth-trigger-handler.js"></script>

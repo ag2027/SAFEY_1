@@ -11,6 +11,7 @@ class UnlockHandler {
         this.isFlushingQueue = false; // Prevent concurrent queue flushing
         this.autoAlertTimers = {}; // Track automatic alert timers for high-risk events
         this.riskLevels = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
+        this.safetyChecksPaused = false; // Pause safety checks during emergency screen
     }
 
     // Initialize
@@ -26,6 +27,26 @@ class UnlockHandler {
             const defaultPin = sequence.slice(0, Math.max(4, Math.min(pinLength, 8)));
             await stealthSettings.updatePin(defaultPin);
             console.log(`[SAFEY] Default PIN set to ${defaultPin}`);
+        }
+    }
+
+    // Pause safety checks (used when emergency screen is open)
+    pauseSafetyChecks() {
+        this.safetyChecksPaused = true;
+        console.log('[SAFEY] Safety checks paused');
+    }
+
+    // Resume safety checks and flush queue if safe to do so
+    async resumeSafetyChecks() {
+        if (!this.safetyChecksPaused) {
+            return;
+        }
+        this.safetyChecksPaused = false;
+        console.log('[SAFEY] Safety checks resumed');
+
+        // Flush queued alerts when stealth mode is inactive
+        if (!stealthController?.isActive) {
+            await this.flushSafetyQueue();
         }
     }
 
@@ -306,25 +327,37 @@ class UnlockHandler {
     }
 
     // Prompt safety check with risk level
-    async promptSafetyCheck(reason, riskLevel = this.riskLevels.LOW) {
+    async promptSafetyCheck(reason, riskLevel = this.riskLevels.LOW, metadata = {}) {
         console.log(`[SAFEY] Safety check triggered: ${reason}`);
         
         // Check if stealth mode is active
         const isStealthActive = stealthController.isActive;
+        if (this.safetyChecksPaused) {
+            await this.queueSafetyCheck(reason, riskLevel, { ...metadata, paused: true });
+            console.log('[SAFEY] Safety check queued (paused)');
+            return false;
+        }
         
         if (isStealthActive) {
             // Queue the alert instead of showing popup
-            await this.queueSafetyCheck(reason, riskLevel);
+            await this.queueSafetyCheck(reason, riskLevel, metadata);
             console.log('[SAFEY] Safety check queued (stealth mode active)');
             return false; // Queued, not shown
         } else {
             // Show popup immediately when not in stealth mode
-            return await this.showSafetyCheckPopup(reason, riskLevel);
+            return await this.showSafetyCheckPopup(reason, riskLevel, metadata);
         }
     }
 
+    // Handle silent emergency triggers without visible UI
+    async handleSilentEmergencyTrigger() {
+        const reason = 'Silent emergency trigger detected. Check in immediately.';
+        await this.queueSafetyCheck(reason, this.riskLevels.HIGH, { source: 'silentEmergency' });
+        console.log('[SAFEY] Silent emergency queued for review');
+    }
+
     // Queue safety check for later (during stealth mode)
-    async queueSafetyCheck(reason, riskLevel = this.riskLevels.LOW) {
+    async queueSafetyCheck(reason, riskLevel = this.riskLevels.LOW, metadata = {}) {
         // Prevent queue overflow
         if (this.safetyQueue.length >= this.maxQueueSize) {
             console.log('[SAFEY] Safety queue full, removing oldest alert');
@@ -335,7 +368,8 @@ class UnlockHandler {
             reason,
             riskLevel,
             timestamp: Date.now(),
-            id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            metadata: metadata || {}
         };
         
         this.safetyQueue.push(alert);
@@ -345,7 +379,8 @@ class UnlockHandler {
             reason,
             riskLevel,
             queueSize: this.safetyQueue.length,
-            timestamp: alert.timestamp
+            timestamp: alert.timestamp,
+            metadata
         });
         
         // Save queue to localStorage (encrypted)
@@ -378,6 +413,35 @@ class UnlockHandler {
                 if (decrypted && decrypted.queue) {
                     this.safetyQueue = decrypted.queue;
                     console.log(`[SAFEY] Safety queue loaded: ${this.safetyQueue.length} alerts`);
+                }
+            }
+
+            // Migrate legacy silent emergency events stored separately
+            const legacySilent = localStorage.getItem('safey_silent_events');
+            if (legacySilent) {
+                try {
+                    const legacyEvents = JSON.parse(legacySilent);
+                    if (Array.isArray(legacyEvents) && legacyEvents.length) {
+                        const migrated = legacyEvents.map(event => ({
+                            reason: 'Silent emergency trigger detected. Check in immediately.',
+                            riskLevel: this.riskLevels.HIGH,
+                            timestamp: event.timestamp || Date.now(),
+                            id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            metadata: { source: 'silentEmergencyLegacy' }
+                        }));
+                        this.safetyQueue.push(...migrated);
+                        console.log(`[SAFEY] Migrated ${migrated.length} legacy silent emergency events`);
+                        await eventLogger.logEvent('safetyCheckQueued', {
+                            reason: 'Legacy silent emergency migration',
+                            riskLevel: this.riskLevels.HIGH,
+                            queueSize: this.safetyQueue.length,
+                            metadata: { migrated: migrated.length }
+                        });
+                    }
+                } catch (migrateError) {
+                    console.error('[SAFEY] Failed to migrate legacy silent events:', migrateError);
+                } finally {
+                    localStorage.removeItem('safey_silent_events');
                 }
             }
         } catch (error) {
@@ -415,7 +479,7 @@ class UnlockHandler {
             const alert = alerts[i];
             console.log(`[SAFEY] Showing queued alert ${i + 1}/${alerts.length} - Risk: ${alert.riskLevel?.toUpperCase() || 'UNKNOWN'}: ${alert.reason}`);
             
-            await this.showSafetyCheckPopup(alert.reason, alert.riskLevel || this.riskLevels.LOW);
+            await this.showSafetyCheckPopup(alert.reason, alert.riskLevel || this.riskLevels.LOW, alert.metadata || {});
             
             // Wait 2 seconds before next alert (except for last one)
             if (i < alerts.length - 1) {
@@ -433,7 +497,7 @@ class UnlockHandler {
     }
 
     // Show safety check popup with risk level and auto-escalation
-    async showSafetyCheckPopup(reason, riskLevel = this.riskLevels.LOW) {
+    async showSafetyCheckPopup(reason, riskLevel = this.riskLevels.LOW, metadata = {}) {
         console.log(`[SAFEY] Prompting safety check - Risk: ${riskLevel.toUpperCase()}: ${reason}`);
         
         // Determine UI styling based on risk level
@@ -524,7 +588,7 @@ class UnlockHandler {
                     if (countdown <= 0 && !autoSendCancelled) {
                         clearInterval(autoSendTimer);
                         console.log('[SAFEY] Auto-sending high-risk safety alert');
-                        this.sendSafetyCheck();
+                        this.sendSafetyCheck(reason, riskLevel, metadata, { isAuto: true });
                         this.closeSafetyCheckCard(card);
                     }
                 }, 1000);
@@ -606,7 +670,7 @@ class UnlockHandler {
                     delete this.autoAlertTimers[alertId];
                 }
                 cleanup();
-                await this.sendSafetyCheck();
+                await this.sendSafetyCheck(reason, riskLevel, metadata, { isAuto: false });
                 this.closeSafetyCheckCard(card);
                 resolve(true);
             });
@@ -655,12 +719,17 @@ class UnlockHandler {
     }
 
     // Send safety check
-    async sendSafetyCheck() {
+    async sendSafetyCheck(reason = 'Safety check triggered', riskLevel = this.riskLevels.LOW, metadata = {}, options = {}) {
         const lastEvents = await eventLogger.getEvents(10);
         
+        const timestamp = Date.now();
         const payload = {
             type: 'safety_check',
-            timestamp: Date.now(),
+            timestamp,
+            reason,
+            riskLevel,
+            metadata,
+            isAuto: options.isAuto === true,
             lastEventLog: lastEvents.map(e => ({
                 type: e.type,
                 timestamp: e.timestamp
@@ -673,12 +742,65 @@ class UnlockHandler {
         // In a real implementation, this would call a configured webhook URL
         await eventLogger.logEvent('safetyCheckSent', payload);
         
-        // Show custom success modal instead of blocking alert
-        this.showSafetyCheckSuccessModal();
+        let contacts = [];
+        let alertMessage = `SAFEY Alert: ${reason}. Triggered at ${new Date(timestamp).toLocaleString()}.`;
+
+        if (typeof trustedContactsManager !== 'undefined') {
+            try {
+                contacts = trustedContactsManager.getContacts();
+                alertMessage = trustedContactsManager.buildAlertMessage({
+                    reason,
+                    riskLevel,
+                    timestamp
+                });
+            } catch (error) {
+                console.error('[SAFEY] Failed to build trusted contact message:', error);
+            }
+        }
+
+        // Show custom success modal with trusted contact actions
+        this.showSafetyCheckSuccessModal({
+            reason,
+            riskLevel,
+            alertMessage,
+            contacts,
+            metadata,
+            isAuto: options.isAuto === true
+        });
     }
 
     // Show success modal after sending safety check
-    showSafetyCheckSuccessModal() {
+    showSafetyCheckSuccessModal(options = {}) {
+        const {
+            title = '✅ Safety Check Sent',
+            message = 'Your safety alert has been logged and is ready to share with your trusted contacts.',
+            alertMessage,
+            contacts = [],
+            riskLevel = this.riskLevels.LOW,
+            reason = 'Safety check triggered',
+            metadata = {},
+            isAuto = false
+        } = options;
+
+        const formatPhone = (phone) => {
+            if (typeof trustedContactsManager !== 'undefined' && typeof trustedContactsManager.formatPhone === 'function') {
+                return trustedContactsManager.formatPhone(phone);
+            }
+            return phone || '';
+        };
+
+        const hasContacts = Array.isArray(contacts) && contacts.length > 0;
+
+        if (hasContacts) {
+            eventLogger.logEvent('trustedContactAlertOpened', {
+                contactCount: contacts.length,
+                riskLevel,
+                reason,
+                isAuto,
+                metadata
+            });
+        }
+
         const modal = document.createElement('div');
         modal.id = 'safety-success-modal';
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
@@ -695,16 +817,36 @@ class UnlockHandler {
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <h3 id="success-title" class="text-lg font-bold text-gray-900 mb-2">✅ Safety Check Sent</h3>
-                        <p class="text-sm text-gray-600 mb-3">Your safety alert has been logged and will be sent to your trusted contact.</p>
+                        <h3 id="success-title" class="text-lg font-bold text-gray-900 mb-2">${title}</h3>
+                        <p class="text-sm text-gray-600 mb-3">${message}</p>
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                            <p class="text-xs text-blue-800 font-medium mb-1">📋 Next Steps:</p>
-                            <ul class="text-xs text-blue-700 space-y-1">
-                                <li>• Your trusted contact will be notified</li>
-                                <li>• Recent activity has been logged</li>
-                                <li>• You can continue using the app safely</li>
-                            </ul>
+                            <p class="text-xs text-blue-800 font-medium mb-2">📋 Alert Message Preview</p>
+                            <textarea id="trusted-contact-message-preview" class="w-full text-xs text-blue-900 bg-blue-100 border border-blue-200 rounded-lg p-2 resize-none" rows="4" readonly>${(alertMessage || '').trim()}</textarea>
+                            <button id="copy-trusted-contact-message" class="mt-2 text-xs text-trust-blue font-semibold underline">Copy message</button>
                         </div>
+                        ${hasContacts ? `
+                            <div class="mb-3">
+                                <p class="text-xs text-gray-600 font-semibold mb-2">Send to trusted contacts:</p>
+                                <div class="space-y-2" id="trusted-contact-actions">
+                                    ${contacts.map(contact => `
+                                        <div class="border border-gray-200 rounded-lg p-2 flex items-center justify-between" data-contact-id="${contact.id}">
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-800">${contact.name}</p>
+                                                <p class="text-xs text-gray-500">${formatPhone(contact.phone)}</p>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button class="text-xs bg-hopeful-teal hover:bg-opacity-90 text-white px-2.5 py-1.5 rounded" data-action="sms" data-phone="${contact.phone}">Text</button>
+                                                <button class="text-xs bg-trust-blue hover:bg-opacity-90 text-white px-2.5 py-1.5 rounded" data-action="call" data-phone="${contact.phone}">Call</button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                                <p class="text-xs text-yellow-800">Add trusted contacts in Settings to send alerts quickly during emergencies.</p>
+                            </div>
+                        `}
                         <p class="text-xs text-gray-500 italic">Demo mode: Configure webhook URL in production</p>
                     </div>
                 </div>
@@ -727,6 +869,71 @@ class UnlockHandler {
             document.getElementById('success-close-btn')?.focus();
         }, 100);
         
+        // Copy alert message handler
+        const copyButton = document.getElementById('copy-trusted-contact-message');
+        if (copyButton) {
+            copyButton.addEventListener('click', async () => {
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(alertMessage || '');
+                    } else {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = alertMessage || '';
+                        textarea.setAttribute('readonly', 'true');
+                        textarea.style.position = 'absolute';
+                        textarea.style.left = '-9999px';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                    }
+                    showToast('Alert message copied', 'success', 2000);
+                    eventLogger.logEvent('trustedContactAlertAction', {
+                        action: 'copy',
+                        reason,
+                        riskLevel,
+                        metadata,
+                        isAuto
+                    });
+                } catch (error) {
+                    console.error('[SAFEY] Failed to copy message:', error);
+                    showToast('Unable to copy message. Copy manually if needed.', 'error', 3000);
+                }
+            });
+        }
+
+        const actionsContainer = modal.querySelector('#trusted-contact-actions');
+        if (actionsContainer) {
+            actionsContainer.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                const action = target.dataset.action;
+                const phone = target.dataset.phone;
+                if (!action || !phone) {
+                    return;
+                }
+
+                const container = target.closest('[data-contact-id]');
+                const contactId = container?.dataset?.contactId;
+
+                if (action === 'sms') {
+                    this.openSmsComposer(phone, alertMessage || '');
+                } else if (action === 'call') {
+                    this.openDialer(phone);
+                }
+
+                eventLogger.logEvent('trustedContactAlertAction', {
+                    action,
+                    phone,
+                    contactId,
+                    reason,
+                    riskLevel,
+                    metadata,
+                    isAuto
+                });
+            });
+        }
+
         // Close handlers
         const closeModal = () => {
             modal.querySelector('.bg-white').classList.add('scale-95');
@@ -743,6 +950,25 @@ class UnlockHandler {
             }
         };
         document.addEventListener('keydown', handleEsc);
+    }
+
+    // Utility: Open SMS composer with pre-filled body
+    openSmsComposer(phone, message) {
+        const encodedMessage = encodeURIComponent(message || '');
+        const link = document.createElement('a');
+        link.href = `sms:${phone}?&body=${encodedMessage}`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => link.remove(), 0);
+    }
+
+    // Utility: Open phone dialer
+    openDialer(phone) {
+        const link = document.createElement('a');
+        link.href = `tel:${phone}`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => link.remove(), 0);
     }
 
     // Show data reset warning modal (level 3 lockout)

@@ -27,7 +27,16 @@ class StealthSettings {
             autoAlertsEnabled: true, // Auto-send high-risk safety alerts after 10s
             debugMode: false,
             lastActivated: null,
-            activationCount: 0
+            activationCount: 0,
+            silentEmergencyEnabled: false,
+            silentEmergencyConfig: {
+                corner: 'bottom-right',
+                tapCount: 3,
+                tapTimeout: 800,
+                areaRatio: 0.18
+            },
+            trustedContacts: [],
+            trustedContactMessageTemplate: null
         };
         this.settings = null;
         this.flags = {
@@ -50,6 +59,20 @@ class StealthSettings {
             // Merge defaults to ensure new keys are present while preserving user overrides
             this.settings = { ...this.defaults, ...this.settings };
             settingsChanged = true;
+        }
+
+        // Ensure nested defaults are merged correctly
+        this.settings.silentEmergencyConfig = {
+            ...this.defaults.silentEmergencyConfig,
+            ...(this.settings.silentEmergencyConfig || {})
+        };
+
+        if (!Array.isArray(this.settings.trustedContacts)) {
+            this.settings.trustedContacts = [];
+        }
+
+        if (typeof this.settings.silentEmergencyEnabled !== 'boolean') {
+            this.settings.silentEmergencyEnabled = false;
         }
 
         // Legacy migration: ensure pinLength exists
@@ -301,6 +324,37 @@ class StealthSettings {
         }
         this.settings.autoLockTimeout = minutes;
         await this.saveSettings();
+    }
+
+    // Silent emergency helpers
+    isSilentEmergencyEnabled() {
+        return this.settings?.silentEmergencyEnabled === true;
+    }
+
+    async setSilentEmergencyEnabled(enabled) {
+        this.settings.silentEmergencyEnabled = enabled === true;
+        await this.saveSettings();
+    }
+
+    getSilentEmergencyConfig() {
+        return {
+            ...this.defaults.silentEmergencyConfig,
+            ...(this.settings?.silentEmergencyConfig || {})
+        };
+    }
+
+    async updateSilentEmergencyConfig(partialConfig = {}) {
+
+        this.settings.silentEmergencyConfig = {
+            ...this.getSilentEmergencyConfig(),
+            ...partialConfig
+        };
+        await this.saveSettings();
+    }
+
+    getTrustedContacts() {
+        const contacts = this.settings?.trustedContacts;
+        return Array.isArray(contacts) ? contacts : [];
     }
 
     // Get setting

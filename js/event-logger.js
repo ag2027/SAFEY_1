@@ -11,9 +11,18 @@ class EventLogger {
             'emergencyToggled',
             'suspiciousDetected',
             'safetyCheckSent',
+            'safetyCheckQueued',
+            'safetyQueueFlushing',
+            'safetyQueueFlushed',
             'appStart',
             'disguiseChanged',
-            'settingsUpdated'
+            'settingsUpdated',
+            'trustedContactAlertAttempted',
+            'trustedContactAdded',
+            'trustedContactRemoved',
+            'trustedContactTemplateUpdated',
+            'trustedContactAlertOpened',
+            'trustedContactAlertAction'
         ];
         this.maxEvents = 100;
     }

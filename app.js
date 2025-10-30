@@ -1463,6 +1463,14 @@ function showScreen(screenId) {
     if (screenId !== 'stealth') {
         trackEvent(`view_${screenId}`);
     }
+
+    if (screenId === 'emergency') {
+        if (window.unlockHandler && typeof unlockHandler.pauseSafetyChecks === 'function') {
+            unlockHandler.pauseSafetyChecks();
+        }
+    } else if (window.unlockHandler && unlockHandler.safetyChecksPaused && typeof unlockHandler.resumeSafetyChecks === 'function') {
+        unlockHandler.resumeSafetyChecks();
+    }
 }
 
 // Risk Assessment Functions
@@ -2123,7 +2131,7 @@ function displayResources(category = 'all') {
 // Emergency Mode - start
 // Helper function to sync silent mode toggles
 function syncSilentModeToggles() {
-    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
+    const silentModeEnabled = stealthSettings.isSilentEmergencyEnabled();
     const silentModeToggle = document.getElementById('silent-mode-toggle');
     const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
     
@@ -2151,48 +2159,158 @@ function showEmergencyMode() {
 }
 
 // Silent Emergency Mode function
-async function silentEmergencyMode() {
+async function silentEmergencyMode(metadata = {}) {
     // Check if silent emergency mode is enabled
-    const silentModeEnabled = localStorage.getItem('safey_silent_emergency_enabled') === 'true';
-    
-    if (!silentModeEnabled) {
+    if (!stealthSettings.isSilentEmergencyEnabled()) {
         console.log('Silent emergency mode is disabled');
         return;
     }
-    
+
+    const payload = {
+        origin: metadata.origin || 'gesture',
+        timestamp: Date.now()
+    };
+
     // Log the event without any visible UI changes
     trackEvent('silent_emergency_triggered');
-    await eventLogger.logEvent('silentEmergencyTriggered');
-    
-    // Add to encrypted event log
-    console.log('Silent emergency event logged at:', new Date().toISOString());
-    
-    // Vibrate once for silent confirmation (if supported)
+    await eventLogger.logEvent('silentEmergencyTriggered', payload);
+
+    console.log('Silent emergency event logged at:', new Date(payload.timestamp).toISOString());
+
+    // Provide subtle haptic feedback if supported
     if (navigator.vibrate) {
-        navigator.vibrate(100);
+        navigator.vibrate(70);
     }
-    
-    // Add event to alert queue without showing it
-    // This will be visible when stealth mode is exited
-    const silentEvent = {
-        type: 'silent_emergency',
-        timestamp: Date.now(),
-        message: 'Silent emergency triggered'
+
+    if (window.unlockHandler && typeof unlockHandler.handleSilentEmergencyTrigger === 'function') {
+        await unlockHandler.handleSilentEmergencyTrigger();
+    }
+}
+
+function setupSilentEmergencyGesture() {
+    if (window.__safeySilentGestureSetup) {
+        return;
+    }
+    window.__safeySilentGestureSetup = true;
+
+    let tapCount = 0;
+    let tapTimer = null;
+
+    const resetTaps = () => {
+        tapCount = 0;
+        if (tapTimer) {
+            clearTimeout(tapTimer);
+            tapTimer = null;
+        }
     };
-    
-    // Store in queue
-    const eventQueue = JSON.parse(localStorage.getItem('safey_silent_events') || '[]');
-    eventQueue.push(silentEvent);
-    localStorage.setItem('safey_silent_events', JSON.stringify(eventQueue));
+
+    const isWithinCorner = (x, y, cornerKey, ratio) => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const xThreshold = Math.max(48, width * ratio);
+        const yThreshold = Math.max(48, height * ratio);
+
+        switch (cornerKey) {
+            case 'top-left':
+                return x <= xThreshold && y <= yThreshold;
+            case 'top-right':
+                return x >= width - xThreshold && y <= yThreshold;
+            case 'bottom-left':
+                return x <= xThreshold && y >= height - yThreshold;
+            case 'bottom-right':
+            default:
+                return x >= width - xThreshold && y >= height - yThreshold;
+        }
+    };
+
+    const handleTap = (clientX, clientY) => {
+        if (!stealthSettings.isSilentEmergencyEnabled()) {
+            resetTaps();
+            return;
+        }
+
+        const config = stealthSettings.getSilentEmergencyConfig();
+        const requiredTaps = Math.max(2, config.tapCount || 3);
+        const tapTimeout = Math.max(300, config.tapTimeout || 800);
+        const areaRatio = Math.min(0.35, Math.max(0.1, config.areaRatio || config.areaSize || 0.18));
+        const corner = (config.corner || 'bottom-right').toLowerCase();
+
+        if (!isWithinCorner(clientX, clientY, corner, areaRatio)) {
+            resetTaps();
+            return;
+        }
+
+        tapCount += 1;
+        if (tapTimer) {
+            clearTimeout(tapTimer);
+            tapTimer = null;
+        }
+
+        if (tapCount >= requiredTaps) {
+            silentEmergencyMode({ origin: 'gesture' });
+            resetTaps();
+        } else {
+            tapTimer = setTimeout(() => {
+                resetTaps();
+            }, tapTimeout);
+        }
+    };
+
+    document.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) {
+            return;
+        }
+        handleTap(event.clientX, event.clientY);
+    }, { passive: true });
+
+    document.addEventListener('touchstart', (event) => {
+        if (!event.touches || !event.touches.length) {
+            return;
+        }
+        const touch = event.touches[0];
+        handleTap(touch.clientX, touch.clientY);
+    }, { passive: true });
 }
 
 // Send Trusted Contact Alert (stub for now)
-function sendTrustedContactAlert() {
-    // TODO: Implement trusted contact messaging
-    // For now, show a toast notification
-    showToast('Trusted contact feature coming soon. Please use Call 911 for immediate help.', 'info', 5000);
+async function sendTrustedContactAlert() {
     trackEvent('trusted_contact_attempted');
-    eventLogger.logEvent('trustedContactAlertAttempted');
+
+    if (typeof trustedContactsManager === 'undefined') {
+        showToast('Trusted contact tools unavailable. Please try again.', 'error', 4000);
+        await eventLogger.logEvent('trustedContactAlertAttempted', { success: false, reason: 'managerUnavailable' });
+        return;
+    }
+
+    const contacts = trustedContactsManager.getContacts();
+    if (!contacts.length) {
+        showToast('Add trusted contacts in Settings to send quick alerts.', 'warning', 5000);
+        await eventLogger.logEvent('trustedContactAlertAttempted', { success: false, reason: 'noContacts' });
+        showSettings();
+        return;
+    }
+
+    const riskLevel = (unlockHandler?.riskLevels?.HIGH) || 'high';
+    const reason = 'Emergency mode alert triggered manually';
+    const timestamp = Date.now();
+    const alertMessage = trustedContactsManager.buildAlertMessage({ reason, riskLevel, timestamp });
+
+    await eventLogger.logEvent('trustedContactAlertAttempted', {
+        success: true,
+        context: 'emergencyMode',
+        contactCount: contacts.length
+    });
+
+    unlockHandler.showSafetyCheckSuccessModal({
+        title: 'Send Trusted Contact Alert',
+        message: 'Review and send this safety message to your trusted contacts.',
+        alertMessage,
+        contacts,
+        riskLevel,
+        reason,
+        metadata: { context: 'emergencyMode', manual: true },
+        isAuto: false
+    });
 }
 
 // Legacy emergency mode function - redirect to new implementation
@@ -2216,6 +2334,10 @@ function showSettings() {
         } else {
             templateUnlockHint.classList.add('hidden');
         }
+    }
+
+    if (typeof window.renderTrustedContactsSettingsUI === 'function') {
+        window.renderTrustedContactsSettingsUI();
     }
 }
 
@@ -2327,22 +2449,30 @@ async function init() {
     
     // Emergency Mode - start
     // Event Listeners - Emergency Screen
-    document.getElementById('emergency-back').addEventListener('click', () => showScreen('home'));
+    document.getElementById('emergency-back').addEventListener('click', async () => {
+        showScreen('home');
+        if (window.unlockHandler && typeof unlockHandler.resumeSafetyChecks === 'function') {
+            await unlockHandler.resumeSafetyChecks();
+        }
+    });
     document.getElementById('text-trusted-contact').addEventListener('click', sendTrustedContactAlert);
-    document.getElementById('view-nearby-resources').addEventListener('click', () => {
+    document.getElementById('view-nearby-resources').addEventListener('click', async () => {
         showScreen('resources');
         displayResources('hotline');
+        if (window.unlockHandler && typeof unlockHandler.resumeSafetyChecks === 'function') {
+            await unlockHandler.resumeSafetyChecks();
+        }
     });
     
     // Silent mode toggle on emergency screen
     const silentModeToggle = document.getElementById('silent-mode-toggle');
-    silentModeToggle.addEventListener('change', (e) => {
+    silentModeToggle.addEventListener('change', async (e) => {
         const enabled = e.target.checked;
-        localStorage.setItem('safey_silent_emergency_enabled', enabled);
-        
+        await stealthSettings.setSilentEmergencyEnabled(enabled);
+
         // Sync with the settings toggle
         syncSilentModeToggles();
-        
+
         showToast(
             enabled ? 'Silent emergency mode enabled' : 'Silent emergency mode disabled',
             'success'
@@ -2351,45 +2481,7 @@ async function init() {
     
     // Load saved silent mode setting
     syncSilentModeToggles();
-    
-    // Triple-tap gesture listener for silent emergency mode
-    let tapCount = 0;
-    let tapTimer = null;
-    const TAP_TIMEOUT = 500; // ms between taps
-    const CORNER_SIZE = 100; // pixels for corner detection
-    
-    document.addEventListener('click', (e) => {
-        // Check if click is in bottom-right corner
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        
-        const isBottomRight = (
-            e.clientX > (windowWidth - CORNER_SIZE) &&
-            e.clientY > (windowHeight - CORNER_SIZE)
-        );
-        
-        if (isBottomRight) {
-            tapCount++;
-            
-            // Clear existing timer
-            if (tapTimer) {
-                clearTimeout(tapTimer);
-            }
-            
-            // Check if we've reached 3 taps
-            if (tapCount >= 3) {
-                silentEmergencyMode();
-                tapCount = 0;
-                tapTimer = null;
-            } else {
-                // Reset counter after timeout
-                tapTimer = setTimeout(() => {
-                    tapCount = 0;
-                    tapTimer = null;
-                }, TAP_TIMEOUT);
-            }
-        }
-    });
+    setupSilentEmergencyGesture();
     // Emergency Mode - end
     
     // Resource filter buttons
@@ -2597,6 +2689,131 @@ function setupStealthSettingsListeners() {
     if (autoAlertsEnabled !== undefined) {
         document.getElementById('auto-alerts-enabled').checked = autoAlertsEnabled;
     }
+
+    // Trusted contacts management
+    const contactsListEl = document.getElementById('trusted-contacts-list');
+    const contactsEmptyEl = document.getElementById('trusted-contacts-empty');
+    const contactsForm = document.getElementById('trusted-contact-form');
+    const contactNameInput = document.getElementById('trusted-contact-name');
+    const contactPhoneInput = document.getElementById('trusted-contact-phone');
+    const addContactButton = document.getElementById('add-trusted-contact');
+    const templateTextarea = document.getElementById('trusted-contact-message-template');
+    const templateStatus = document.getElementById('trusted-contact-template-status');
+
+    if (contactsListEl && contactsForm && templateTextarea && typeof trustedContactsManager !== 'undefined') {
+        const maxContacts = trustedContactsManager.getMaxContacts();
+
+        const escapeHtml = (str = '') => String(str).replace(/[&<>"']/g, (char) => {
+            switch (char) {
+                case '&': return '&amp;';
+                case '<': return '&lt;';
+                case '>': return '&gt;';
+                case '"': return '&quot;';
+                case "'": return '&#39;';
+                default: return char;
+            }
+        });
+
+        const updateAddButtonState = (count) => {
+            if (!addContactButton) return;
+            const isAtLimit = count >= maxContacts;
+            addContactButton.disabled = isAtLimit;
+            addContactButton.classList.toggle('opacity-50', isAtLimit);
+            addContactButton.textContent = isAtLimit ? 'Contact Limit Reached' : 'Add Trusted Contact';
+        };
+
+        const renderTrustedContacts = () => {
+            const contacts = trustedContactsManager.getContacts();
+            if (contacts.length) {
+                contactsListEl.innerHTML = contacts.map(contact => `
+                    <div class="border border-gray-200 rounded-lg p-3 flex items-center justify-between" data-contact-id="${contact.id}">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">${escapeHtml(contact.name)}</p>
+                            <p class="text-xs text-gray-500">${trustedContactsManager.formatPhone(contact.phone)}</p>
+                        </div>
+                        <button type="button" class="text-xs text-red-600 hover:text-red-700 underline" data-remove-contact>
+                            Remove
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                contactsListEl.innerHTML = '';
+            }
+
+            if (contactsEmptyEl) {
+                if (contacts.length) {
+                    contactsEmptyEl.classList.add('hidden');
+                } else {
+                    contactsEmptyEl.classList.remove('hidden');
+                }
+            }
+
+            updateAddButtonState(contacts.length);
+        };
+
+        contactsForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const name = contactNameInput?.value?.trim() || '';
+            const phone = contactPhoneInput?.value?.trim() || '';
+
+            try {
+                await trustedContactsManager.addContact({ name, phone });
+                showToast('Trusted contact added', 'success', 2500);
+                contactsForm.reset();
+                renderTrustedContacts();
+            } catch (error) {
+                showToast(error.message || 'Unable to add contact. Check details and try again.', 'error', 3500);
+            }
+        });
+
+        contactsListEl.addEventListener('click', async (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) {
+                return;
+            }
+            if (!target.closest('[data-remove-contact]')) {
+                return;
+            }
+            const wrapper = target.closest('[data-contact-id]');
+            const contactId = wrapper?.dataset?.contactId;
+            if (!contactId) {
+                return;
+            }
+            await trustedContactsManager.removeContact(contactId);
+            showToast('Trusted contact removed', 'info', 2500);
+            renderTrustedContacts();
+        });
+
+        let templateSaveTimer = null;
+        templateTextarea.value = trustedContactsManager.getMessageTemplate();
+        templateTextarea.addEventListener('input', () => {
+            if (templateStatus) {
+                templateStatus.classList.add('hidden');
+            }
+            if (templateSaveTimer) {
+                clearTimeout(templateSaveTimer);
+            }
+
+            templateSaveTimer = setTimeout(async () => {
+                try {
+                    await trustedContactsManager.updateMessageTemplate(templateTextarea.value);
+                    if (templateStatus) {
+                        templateStatus.classList.remove('hidden');
+                        setTimeout(() => templateStatus.classList.add('hidden'), 1600);
+                    }
+                } catch (error) {
+                    console.error('Failed to save trusted contact template:', error);
+                }
+            }, 600);
+        });
+
+        renderTrustedContacts();
+
+        window.renderTrustedContactsSettingsUI = () => {
+            renderTrustedContacts();
+            templateTextarea.value = trustedContactsManager.getMessageTemplate();
+        };
+    }
     
     // Debug toggle
     document.getElementById('toggle-debug').addEventListener('click', () => {
@@ -2607,9 +2824,9 @@ function setupStealthSettingsListeners() {
     // Silent emergency toggle in settings
     const silentEmergencyEnabledCheckbox = document.getElementById('silent-emergency-enabled');
     if (silentEmergencyEnabledCheckbox) {
-        silentEmergencyEnabledCheckbox.addEventListener('change', (e) => {
+        silentEmergencyEnabledCheckbox.addEventListener('change', async (e) => {
             const enabled = e.target.checked;
-            localStorage.setItem('safey_silent_emergency_enabled', enabled);
+            await stealthSettings.setSilentEmergencyEnabled(enabled);
             
             // Sync with the emergency screen toggle
             syncSilentModeToggles();
