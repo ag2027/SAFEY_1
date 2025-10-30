@@ -7,7 +7,7 @@
     <meta name="description" content="SAFEY - Discreet safety and resource platform">
     <title>Notes</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Ctext%20y%3D%27.9em%27%20font-size%3D%2790%27%3E%F0%9F%93%8B%3C%2Ftext%3E%3C%2Fsvg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -498,7 +498,7 @@
                     </svg>
                 </button>
             </div>
-            <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
+            <div class="space-y-5 max-h-[70vh] overflow-y-auto px-3">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">PIN Length</label>
                     <select id="pin-length-select" class="w-full px-4 py-3 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-trust-blue focus:border-transparent" aria-label="Select PIN length">
@@ -550,10 +550,6 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-3">Activation Triggers</label>
                     <div class="space-y-2">
-                        <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
-                            <span class="text-sm text-gray-700">Logo double-tap</span>
-                            <input type="checkbox" id="trigger-logo" checked class="rounded border-gray-300 text-trust-blue focus:ring-trust-blue">
-                        </label>
                         <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
                             <span class="text-sm text-gray-700">Corner multi-tap</span>
                             <input type="checkbox" id="trigger-corner" checked class="rounded border-gray-300 text-trust-blue focus:ring-trust-blue">
