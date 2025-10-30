@@ -7,7 +7,7 @@ class LanguageManager {
         this.translations = {
             en: {
                 // Home Screen
-                'home.welcome': 'Welcome back, you're in control.',
+                'home.welcome': 'Welcome back, you\'re in control.',
                 'home.subtitle': 'Your safety starts here.',
                 'home.chatbot.placeholder': 'Ask the Safety Assistant…',
                 'home.assessment': 'Start Assessment',
