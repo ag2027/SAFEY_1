@@ -876,6 +876,9 @@ async function init() {
     // Initialize chatbot
     await chatbot.init();
 
+    // Initialize inline chatbot after chatbot is ready
+    initializeInlineChatbot();
+
     // Enable debug keyboard shortcut
     debugUI.enableKeyboardShortcut();
     
@@ -904,17 +907,12 @@ async function init() {
 
     document.getElementById('emergency-btn').addEventListener('click', activateEmergencyMode);
 
-    document.getElementById('chatbot-btn').addEventListener('click', () => {
-        showScreen('chatbot');
-    });
-
     // Stealth toggle now uses the new system
     document.getElementById('stealth-toggle').addEventListener('click', async () => {
         await stealthController.activate();
     });
 
     document.getElementById('settings-btn').addEventListener('click', showSettings);
-    document.getElementById('settings-btn-grid').addEventListener('click', showSettings);
     
     // Event Listeners - Assessment Screen
     document.getElementById('assessment-back').addEventListener('click', () => showScreen('home'));
@@ -1367,6 +1365,20 @@ function removeChatMessage(element) {
     }
 }
 
+function displayChatHistory() {
+    const messages = chatbot.getMessageHistory();
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    // Clear existing messages
+    container.innerHTML = '';
+
+    // Add all messages from history
+    messages.forEach(message => {
+        addChatMessage(message.role, message.content);
+    });
+}
+
 async function saveApiKey() {
     const input = document.getElementById('groq-api-key');
     const apiKey = input.value.trim();
@@ -1389,6 +1401,83 @@ async function saveApiKey() {
         console.error('Groq API key save error:', error);
     }
 }
+
+// Inline Chatbot Logic
+function initializeInlineChatbot() {
+    const form = document.getElementById('inline-chatbot-form');
+    const input = document.getElementById('inline-chatbot-input');
+    const submitBtn = document.getElementById('inline-chatbot-submit');
+    const sendIcon = document.getElementById('send-icon');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const responsePreview = document.getElementById('inline-chatbot-response-preview');
+    const responseText = document.getElementById('inline-chatbot-response-text');
+    const continueBtn = document.getElementById('continue-to-chatbot-btn');
+
+    if (!form || !input || !submitBtn || !sendIcon || !loadingSpinner || !responsePreview || !responseText || !continueBtn) {
+        console.error('Inline chatbot elements not found');
+        return;
+    }
+
+    input.addEventListener('input', () => {
+        submitBtn.disabled = input.value.trim() === '';
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userMessage = input.value.trim();
+        if (!userMessage) return;
+
+        if (!chatbot.isReady()) {
+            showToast('Chatbot not ready. Please try again later.', 'error');
+            return;
+        }
+
+        // Show loading state
+        submitBtn.disabled = true;
+        sendIcon.classList.add('hidden');
+        loadingSpinner.classList.remove('hidden');
+        responsePreview.classList.add('hidden');
+
+        try {
+            const assistantMessage = await chatbot.sendMessage(userMessage);
+            
+            // Display preview
+            responseText.textContent = assistantMessage.substring(0, 150) + (assistantMessage.length > 150 ? '...' : '');
+            responsePreview.classList.remove('hidden');
+
+            // Reset input
+            input.value = '';
+
+        } catch (error) {
+            console.error('Inline chatbot error:', error);
+            responseText.textContent = 'Sorry, I couldn\'t get a response. Please try again.';
+            responsePreview.classList.remove('hidden');
+        } finally {
+            // Hide loading state
+            submitBtn.disabled = false;
+            sendIcon.classList.remove('hidden');
+            loadingSpinner.classList.add('hidden');
+        }
+    });
+
+    continueBtn.addEventListener('click', () => {
+        showScreen('chatbot');
+        displayChatHistory(); // This function needs to be available in chatbot UI logic
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing event listeners ...
+    // ... existing event listeners ...
+});
 
 // Start the app when DOM is ready
 if (document.readyState === 'loading') {

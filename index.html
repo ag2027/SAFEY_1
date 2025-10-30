@@ -144,6 +144,23 @@
                 <p class="text-gray-600 text-sm">Your safety starts here.</p>
             </div>
 
+            <!-- Safety Assistant Inline Prompt -->
+            <div id="inline-chatbot-container" class="mb-8">
+                <form id="inline-chatbot-form" class="relative bg-white p-2 rounded-card material-shadow-lg flex items-center">
+                    <input type="text" id="inline-chatbot-input" class="flex-grow bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-500 pl-3" placeholder="Ask the Safety Assistant…" aria-label="Ask Safety Assistant">
+                    <button type="submit" id="inline-chatbot-submit" class="bg-hopeful-teal text-white rounded-full w-10 h-10 flex items-center justify-center ml-2 btn-scale" aria-label="Send to Safety Assistant" disabled>
+                        <svg id="send-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                        </svg>
+                        <div id="loading-spinner" class="hidden animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    </button>
+                </form>
+                <div id="inline-chatbot-response-preview" class="hidden mt-3 p-4 bg-white rounded-card material-shadow animate-fade-in">
+                    <p id="inline-chatbot-response-text" class="text-gray-700 text-sm" aria-live="polite"></p>
+                    <button id="continue-to-chatbot-btn" class="mt-3 text-sm font-semibold text-trust-blue">Continue in Assistant →</button>
+                </div>
+            </div>
+
             <!-- Main Actions - 2x2 Grid -->
             <div class="grid grid-cols-2 gap-4 mb-8">
                 <button id="assessment-btn" class="bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Start safety assessment">
@@ -173,14 +190,6 @@
                     </div>
                     <span class="font-semibold text-gray-800 text-base">Emergency Mode</span>
                 </button>
-
-                <button id="chatbot-btn" class="col-span-2 bg-white p-6 rounded-card material-shadow-lg card-hover flex flex-col items-center justify-center min-h-[140px] text-center" aria-label="Chat with safety assistant">
-                    <div class="w-12 h-12 mb-3 flex items-center justify-center rounded-full bg-hopeful-teal bg-opacity-10">
-                        <span class="text-2xl">🤖</span>
-                    </div>
-                    <span class="font-semibold text-gray-800 text-base">Safety Assistant</span>
-                </button>
-
             </div>
 
             <!-- Info Section -->
