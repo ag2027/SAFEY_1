@@ -117,9 +117,14 @@ You are SAFEY's built-in safety assistant.
                 timestamp: Date.now()
             });
 
-            // Prepare messages for API
+            // Prepare messages for API with language modifier
+            let systemPrompt = this.basePrompt;
+            if (typeof languageManager !== 'undefined') {
+                systemPrompt += languageManager.getSpanishPromptModifier();
+            }
+            
             const apiMessages = [
-                { role: 'system', content: this.basePrompt },
+                { role: 'system', content: systemPrompt },
                 ...this.messages.slice(-10) // Keep last 10 messages for context
             ];
 

@@ -2381,6 +2381,9 @@ async function clearAllData() {
 
 // Initialize App
 async function init() {
+    // Initialize language manager first
+    await languageManager.init();
+    
     // Initialize stealth system first
     await stealthController.init();
 
@@ -2521,6 +2524,23 @@ async function init() {
 
 // Setup stealth settings listeners
 function setupStealthSettingsListeners() {
+    // Language selector
+    const languageSelect = document.getElementById('language-select');
+    if (languageSelect) {
+        // Set current language
+        languageSelect.value = languageManager.getLanguage();
+        
+        languageSelect.addEventListener('change', (e) => {
+            const newLang = e.target.value;
+            languageManager.setLanguage(newLang);
+            showToast(
+                newLang === 'es' ? 'Idioma cambiado a español' : 'Language changed to English',
+                'success',
+                2000
+            );
+        });
+    }
+    
     // PIN input
     const pinInput = document.getElementById('pin-input');
     const updatePinInputValidation = () => {
