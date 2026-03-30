@@ -1,0 +1,3 @@
+name = "safey-cerebras-proxy"
+main = "index.js"
+compatibility_date = "2026-03-30"

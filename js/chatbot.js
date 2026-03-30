@@ -1,13 +1,16 @@
-// SAFEY Chatbot - Cerebras Integration
-// Handles chat functionality with safety-focused responses
+// SAFEY Chatbot - Cerebras via secure proxy
+// Handles chat functionality with safety-focused responses without exposing API keys
 
 class Chatbot {
     constructor() {
-        this.apiKey = null;
         this.isInitialized = false;
         this.messages = [];
         this.isLoading = false;
 
+        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+        this.proxyUrl = isLocalhost
+            ? 'http://127.0.0.1:8787'
+            : 'https://safey-cerebras-proxy.safey.workers.dev';
         // System prompt for safety-focused responses
         this.basePrompt = `
 You are SAFEY's built-in safety assistant. 
@@ -31,29 +34,13 @@ You are SAFEY's built-in safety assistant.
     • "I want to plan leaving safely" → "See safety planning tips: 'safety-plan-screen'."
     • "I need to hide messages" → "Stealth mode lets you hide the app under a calculator or notes interface."
 `.trim();
-
     }
 
     async init() {
         try {
-            // Load encrypted API key from settings
-            const encryptedKey = await storageUtils.loadData('settings', 'cerebras_api_key');
-            if (encryptedKey && encryptedKey.value) {
-                this.apiKey = await cryptoUtils.decrypt(encryptedKey.value, 'cerebras_key_salt');
-                this.isInitialized = true;
-                console.log('[SAFEY] Chatbot initialized with stored API key');
-            } else {
-                // Set default API key (encrypted and stored for security)
-                const defaultApiKey = 'csk-med292jdkdxhyf55r9tr8cytc2e9tydfkpcjxn6d5e4jf6he'; // Cerebras API key
-                const encrypted = await cryptoUtils.encrypt(defaultApiKey, 'cerebras_key_salt');
-                await storageUtils.saveData('settings', 'cerebras_api_key', { value: encrypted });
-                this.apiKey = defaultApiKey;
-                this.isInitialized = true;
-                console.log('[SAFEY] Chatbot initialized with default API key');
-            }
-
-            // Load encrypted chat history
+            this.isInitialized = true;
             await this.loadChatHistory();
+            console.log('[SAFEY] Chatbot initialized (proxy mode)');
         } catch (error) {
             console.error('[SAFEY] Chatbot initialization error:', error);
         }
@@ -83,24 +70,15 @@ You are SAFEY's built-in safety assistant.
         }
     }
 
-    async setApiKey(apiKey) {
-        try {
-            // Encrypt and store the API key
-            const encrypted = await cryptoUtils.encrypt(apiKey, 'cerebras_key_salt');
-            await storageUtils.saveData('settings', 'cerebras_api_key', { value: encrypted });
-            this.apiKey = apiKey;
-            this.isInitialized = true;
-            console.log('[SAFEY] API key updated successfully');
-            return true;
-        } catch (error) {
-            console.error('[SAFEY] Error setting API key:', error);
-            return false;
-        }
+    // Kept for compatibility with existing settings UI, but no key is stored client-side anymore.
+    async setApiKey() {
+        console.warn('[SAFEY] setApiKey is deprecated in proxy mode.');
+        return true;
     }
 
     async sendMessage(userMessage) {
-        if (!this.isInitialized || !this.apiKey) {
-            throw new Error('Chatbot not initialized. Please set API key in settings.');
+        if (!this.isInitialized) {
+            throw new Error('Chatbot not initialized.');
         }
 
         if (this.isLoading) {
@@ -110,57 +88,50 @@ You are SAFEY's built-in safety assistant.
         this.isLoading = true;
 
         try {
-            // Add user message to history
             this.messages.push({
                 role: 'user',
                 content: userMessage,
                 timestamp: Date.now()
             });
 
-            // Prepare messages for API
             const apiMessages = [
                 { role: 'system', content: this.basePrompt },
-                ...this.messages.slice(-10) // Keep last 10 messages for context
+                ...this.messages.slice(-10)
             ];
 
-            // Call Cerebras API
-            const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+            // Call your proxy instead of Cerebras directly
+            const response = await fetch(this.proxyUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'llama-3.3-70b',
                     messages: apiMessages,
-                    max_completion_tokens: 2048,
-                    temperature: 0.2,
-                    top_p: 1
+                    options: {
+                        model: 'llama3.1-8b',
+                        max_completion_tokens: 2048,
+                        temperature: 0.2,
+                        top_p: 1
+                    }
                 })
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(`API Error: ${error.error?.message || 'Unknown error'}`);
+                throw new Error(`API Error: ${data.error || 'Unknown error'}`);
             }
 
-            const data = await response.json();
-            const assistantMessage = data.choices[0]?.message?.content;
-
+            const assistantMessage = data.reply;
             if (!assistantMessage) {
                 throw new Error('No response from assistant');
             }
 
-            // Add assistant response to history
             this.messages.push({
                 role: 'assistant',
                 content: assistantMessage,
                 timestamp: Date.now()
             });
 
-            // Save chat history after each message
             await this.saveChatHistory();
-
             return assistantMessage;
 
         } catch (error) {
@@ -180,7 +151,7 @@ You are SAFEY's built-in safety assistant.
     }
 
     isReady() {
-        return this.isInitialized && this.apiKey;
+        return this.isInitialized;
     }
 }
 
