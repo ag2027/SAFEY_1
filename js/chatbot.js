@@ -112,7 +112,7 @@ You are SAFEY's built-in safety assistant.
                 body: JSON.stringify({
                     messages: apiMessages,
                     options: {
-                        model: 'llama3.1-8b',
+                        model: 'gpt-oss-120b',
                         max_completion_tokens: 2048,
                         temperature: 0.2,
                         top_p: 1
