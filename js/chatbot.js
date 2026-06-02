@@ -88,15 +88,21 @@ You are SAFEY's built-in safety assistant.
         this.isLoading = true;
 
         try {
+            // Store locally with timestamp for history tracking
             this.messages.push({
                 role: 'user',
                 content: userMessage,
-                timestamp: Date.now()
+                timestamp: Date.now()  // Store locally only
             });
 
+            // Build API messages without timestamp field
             const apiMessages = [
                 { role: 'system', content: this.basePrompt },
-                ...this.messages.slice(-10)
+                ...this.messages.slice(-10).map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                    // Don't include timestamp in API payload
+                }))
             ];
 
             // Call your proxy instead of Cerebras directly
