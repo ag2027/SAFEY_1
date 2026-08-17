@@ -2,43 +2,50 @@ name: Serial CT Repro Fetch
 on:
   push:
     branches: [serial-ct-repro-temp]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   fetch-clinical:
+    if: ${{ !contains(github.event.head_commit.message, '[nlst fetched]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Fetch exact public NLST clinical delivery
+      - uses: actions/checkout@v4
+        with:
+          ref: serial-ct-repro-temp
+      - name: Fetch and verify exact public NLST clinical delivery
         shell: bash
         run: |
           set -euxo pipefail
           URL='https://wiki.cancerimagingarchive.net/download/attachments/5800702/package-nlst-780.2021-05-28.zip?version=1&modificationDate=1633562878492&api=v2'
-          curl -L --fail --retry 5 --retry-delay 2 "$URL" -o nlst.zip
-          sha256sum nlst.zip | tee nlst_zip.sha256
-          unzip -l nlst.zip | tee zip_listing.txt
-          mkdir -p extracted
-          unzip -q nlst.zip -d extracted
-          find extracted -type f -maxdepth 5 -print | sort | tee extracted_files.txt
-          SCREEN=$(find extracted -type f -iname 'nlst_780_screen_idc_20210527.csv' -print -quit)
+          curl -L --fail --retry 5 --retry-delay 2 "$URL" -o /tmp/nlst.zip
+          sha256sum /tmp/nlst.zip | tee nlst_zip.sha256
+          rm -rf /tmp/nlst-extracted && mkdir -p /tmp/nlst-extracted
+          unzip -q /tmp/nlst.zip -d /tmp/nlst-extracted
+          find /tmp/nlst-extracted -type f -print | sort > nlst_extracted_files.txt
+          SCREEN=$(find /tmp/nlst-extracted -type f -iname 'nlst_780_screen_idc_20210527.csv' -print -quit)
           test -n "$SCREEN"
           cp "$SCREEN" nlst_780_screen_idc_20210527.csv
-          python - <<'PY'
-          import pandas as pd
+          python - <<'PY' > nlst_screen_validation.txt
+          import hashlib, pandas as pd
           p='nlst_780_screen_idc_20210527.csv'
+          b=open(p,'rb').read()
           d=pd.read_csv(p, dtype=str)
-          print('shape=',d.shape)
-          print('columns=',d.columns.tolist())
-          print(d.head(3).to_csv(index=False))
+          print('sha256='+hashlib.sha256(b).hexdigest())
+          print('shape='+str(d.shape))
+          print('columns='+repr(d.columns.tolist()))
+          print('pid_unique='+str(d['pid'].nunique() if 'pid' in d.columns else 'NA'))
           PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nlst-screen-exact
-          path: |
-            nlst_780_screen_idc_20210527.csv
-            nlst_zip.sha256
-            zip_listing.txt
-            extracted_files.txt
-          retention-days: 1
+          cat nlst_screen_validation.txt
+      - name: Commit verified table to temporary branch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'serial-ct-repro-bot'
+          git config user.email 'serial-ct-repro-bot@users.noreply.github.com'
+          git add nlst_780_screen_idc_20210527.csv nlst_zip.sha256 nlst_extracted_files.txt nlst_screen_validation.txt
+          git commit -m '[nlst fetched] Persist exact public NLST screen table'
+          git push origin HEAD:serial-ct-repro-temp
