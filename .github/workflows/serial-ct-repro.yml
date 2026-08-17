@@ -1,0 +1,42 @@
+name: Serial CT Repro Fetch
+on:
+  push:
+    branches: [serial-ct-repro-temp]
+  workflow_dispatch:
+
+jobs:
+  fetch-clinical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Fetch exact public NLST clinical delivery
+        shell: bash
+        run: |
+          set -euxo pipefail
+          URL='https://wiki.cancerimagingarchive.net/download/attachments/5800702/package-nlst-780.2021-05-28.zip?version=1&modificationDate=1633562878492&api=v2'
+          curl -L --fail --retry 5 --retry-delay 2 "$URL" -o nlst.zip
+          sha256sum nlst.zip | tee nlst_zip.sha256
+          unzip -l nlst.zip | tee zip_listing.txt
+          mkdir -p extracted
+          unzip -q nlst.zip -d extracted
+          find extracted -type f -maxdepth 5 -print | sort | tee extracted_files.txt
+          SCREEN=$(find extracted -type f -iname 'nlst_780_screen_idc_20210527.csv' -print -quit)
+          test -n "$SCREEN"
+          cp "$SCREEN" nlst_780_screen_idc_20210527.csv
+          python - <<'PY'
+          import pandas as pd
+          p='nlst_780_screen_idc_20210527.csv'
+          d=pd.read_csv(p, dtype=str)
+          print('shape=',d.shape)
+          print('columns=',d.columns.tolist())
+          print(d.head(3).to_csv(index=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nlst-screen-exact
+          path: |
+            nlst_780_screen_idc_20210527.csv
+            nlst_zip.sha256
+            zip_listing.txt
+            extracted_files.txt
+          retention-days: 1
